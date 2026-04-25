@@ -1,0 +1,36 @@
+.sidebar {
+  position: relative;
+  height: 100vh;
+  width: var(--sidebar-width);
+  background: var(--card-bg);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-color);
+  z-index: 10;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255,255,255,0.05);
+  color: var(--text-main);
+}
+
+.sidebar-link.active {
+  background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
+  color: var(--accent-color);
+  border-left: 3px solid var(--accent-color);
+}

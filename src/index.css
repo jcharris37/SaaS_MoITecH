@@ -1,0 +1,132 @@
+:root {
+  --primary-color: #ffffff;
+  --secondary-color: #0f172a;
+  --accent-color: #ff5e00;
+  --text-main: #f8fafc;
+  --text-muted: #9ca3af;
+  --bg-color: #050505;
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --border-radius: 20px;
+  --sidebar-width: 260px;
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  transition: background-color 0.4s ease, color 0.4s ease;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+/* Base Neon Background */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #050505;
+  background-image: radial-gradient(circle at 50% 50%, #0f0c1b 0%, #050505 100%);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Background Animated Glowing Orbs (Global) */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  opacity: 0.6;
+  animation: float 20s infinite alternate;
+  pointer-events: none;
+}
+
+.orb-1 { width: 400px; height: 400px; background: #ff5e00; top: -100px; left: -100px; }
+.orb-2 { width: 500px; height: 500px; background: #4f46e5; bottom: -200px; right: -100px; animation-delay: -5s; }
+.orb-3 { width: 300px; height: 300px; background: #9333ea; top: 40%; left: 60%; animation-delay: -10s; }
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, 50px) scale(1.1); }
+  100% { transform: translate(-30px, 80px) scale(0.9); }
+}
+
+/* Glassmorphism Classes Mappers */
+.glass-panel, .card {
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  color: var(--text-main) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* Gradient Text (Moihub Brand) */
+.text-gradient {
+  background: linear-gradient(135deg, #ff5e00, #9333ea, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent !important;
+  display: inline-block;
+}
+
+/* Minimalist Overrides for Bootstrap */
+.btn-primary {
+  background-color: var(--accent-color) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500 !important;
+}
+
+.card {
+  background-color: var(--card-bg) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05) !important;
+  color: var(--text-main);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.4s ease;
+}
+
+.table {
+  vertical-align: middle;
+}
+
+.form-control {
+  border-radius: 8px !important;
+  padding: 0.6rem 1rem !important;
+  border-color: #e2e8f0 !important;
+}
+
+.form-control:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Layout Utilities */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-title {
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
