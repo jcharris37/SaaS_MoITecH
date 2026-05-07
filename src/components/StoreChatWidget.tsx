@@ -50,6 +50,15 @@ const StoreChatWidget: React.FC<StoreChatWidgetProps> = ({ slug }) => {
       setTimeout(() => {
         setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', text: data.reply || 'Sin respuesta del servidor' }]);
         setIsTyping(false);
+        
+        if (data.action === 'redirect_whatsapp' && data.phone) {
+          // Abrir WhatsApp en una nueva pestaña después de mostrar el mensaje
+          setTimeout(() => {
+             const cleanPhone = data.phone.replace(/[^0-9]/g, '');
+             const msg = encodeURIComponent("Hola, me comunico desde la tienda online.");
+             window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+          }, 1000);
+        }
       }, 800); // Simulamos retraso de tipeo
 
     } catch {

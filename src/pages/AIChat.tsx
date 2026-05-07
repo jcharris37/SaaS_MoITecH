@@ -15,6 +15,7 @@ const AIChat: React.FC = () => {
   const [rules, setRules] = useState<BotRule[]>([]);
   const [newCommand, setNewCommand] = useState('');
   const [newResponse, setNewResponse] = useState('');
+  const [isRedirect, setIsRedirect] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchRules = async () => {
@@ -44,13 +45,14 @@ const AIChat: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trigger_keyword: newCommand,
-          response_text: newResponse
+          response_text: isRedirect ? '__REDIRECT_WHATSAPP__' : newResponse
         })
       });
 
       if (response.ok) {
         setNewCommand('');
         setNewResponse('');
+        setIsRedirect(false);
         fetchRules();
       }
     } catch {
@@ -91,6 +93,20 @@ const AIChat: React.FC = () => {
                   style={{background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff'}}
                   required
                 />
+                <small className="text-muted d-block mt-1">Usa "default" para configurar el mensaje de bienvenida.</small>
+              </div>
+              
+              <div className="mb-3 form-check">
+                <input 
+                  type="checkbox" 
+                  className="form-check-input" 
+                  id="redirectCheck" 
+                  checked={isRedirect}
+                  onChange={(e) => setIsRedirect(e.target.checked)}
+                />
+                <label className="form-check-label text-white" htmlFor="redirectCheck">
+                  Redirigir a WhatsApp de Asesor
+                </label>
               </div>
               <div className="mb-4">
                 <label className="text-muted mb-2">Respuesta del Bot</label>
@@ -98,10 +114,11 @@ const AIChat: React.FC = () => {
                   className="form-control" 
                   rows={5} 
                   placeholder="Lo que el bot contestará exactamente..."
-                  value={newResponse}
+                  value={isRedirect ? 'Redirección activada' : newResponse}
+                  disabled={isRedirect}
                   onChange={(e) => setNewResponse(e.target.value)}
                   style={{background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff'}}
-                  required
+                  required={!isRedirect}
                 ></textarea>
               </div>
               <button type="submit" className="btn text-white w-100 d-flex justify-content-center align-items-center gap-2" style={{background: 'linear-gradient(135deg, var(--accent-color), #ea580c)', border: 'none'}}>
@@ -131,7 +148,13 @@ const AIChat: React.FC = () => {
                     {rules.map((r) => (
                       <tr key={r.id} style={{borderColor: 'var(--border-color)'}}>
                         <td className="fw-bold bg-transparent border-bottom" style={{color: 'var(--accent-color)'}}>"{r.trigger_keyword}"</td>
-                        <td className="bg-transparent border-bottom"><small>{r.response_text}</small></td>
+                        <td className="bg-transparent border-bottom">
+                          <small>
+                            {r.response_text === '__REDIRECT_WHATSAPP__' 
+                              ? <span className="badge bg-success">🔗 Redirección a WhatsApp</span>
+                              : r.response_text}
+                          </small>
+                        </td>
                         <td className="bg-transparent border-bottom">
                           <button onClick={() => deleteRule(r.id)} className="btn btn-sm btn-outline-danger border-0">
                             <Trash2 size={16} />

@@ -212,6 +212,40 @@ def get_store_products(slug: str, db: Session = Depends(get_db)):
         return []
     return tenant.products
 
+@app.post("/api/store/{slug}/chat")
+def store_chat(slug: str, req: schemas.ChatRequest, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada")
+        
+    user_msg = req.message.strip().lower()
+    
+    # 1. Buscar regla exacta
+    rule = db.query(models.BotRule).filter(
+        models.BotRule.tenant_id == tenant.id,
+        models.BotRule.trigger_keyword == user_msg
+    ).first()
+    
+    # 2. Si no hay regla exacta, buscar el mensaje de bienvenida (default)
+    if not rule:
+        default_rule = db.query(models.BotRule).filter(
+            models.BotRule.tenant_id == tenant.id,
+            models.BotRule.trigger_keyword == "default"
+        ).first()
+        
+        reply_text = default_rule.response_text if default_rule else "Hola. Escribe una opción válida del menú o inténtalo de nuevo."
+        return {"reply": reply_text, "action": "text"}
+        
+    # 3. Si hay regla, procesarla
+    if rule.response_text == "__REDIRECT_WHATSAPP__":
+        return {
+            "reply": "Conectando con nuestro asesor...", 
+            "action": "redirect_whatsapp", 
+            "phone": tenant.advisor_phone or ""
+        }
+        
+    return {"reply": rule.response_text, "action": "text"}
+
 # ==========================================
 # 🔐 PRIVATE (MULTI-TENANT SEGURO)
 # ==========================================
@@ -260,6 +294,48 @@ def delete_product(product_id: int, user=Depends(get_current_user), db: Session 
 def get_clients(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
     return db.query(models.Client).filter(models.Client.tenant_id == tenant_id).all()
+
+# REGLAS DEL BOT (IVR)
+@app.get("/api/rules", response_model=list[schemas.BotRuleOut])
+def get_rules(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    return db.query(models.BotRule).filter(models.BotRule.tenant_id == tenant_id).all()
+
+@app.post("/api/rules", response_model=schemas.BotRuleOut)
+def create_rule(rule: schemas.BotRuleCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    
+    # Si la keyword es "default", sobrescribimos la anterior en vez de crear muchas
+    if rule.trigger_keyword.strip().lower() == "default":
+        existing = db.query(models.BotRule).filter(
+            models.BotRule.tenant_id == tenant_id,
+            models.BotRule.trigger_keyword == "default"
+        ).first()
+        if existing:
+            existing.response_text = rule.response_text
+            db.commit()
+            db.refresh(existing)
+            return existing
+            
+    new_rule = models.BotRule(
+        tenant_id=tenant_id,
+        trigger_keyword=rule.trigger_keyword.strip().lower(),
+        response_text=rule.response_text
+    )
+    db.add(new_rule)
+    db.commit()
+    db.refresh(new_rule)
+    return new_rule
+
+@app.delete("/api/rules/{rule_id}")
+def delete_rule(rule_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    rule = db.query(models.BotRule).filter(models.BotRule.id == rule_id, models.BotRule.tenant_id == tenant_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Regla no encontrada")
+    db.delete(rule)
+    db.commit()
+    return {"status": "ok"}
 
 # STATS
 @app.get("/api/stats", response_model=schemas.DashboardStats)
