@@ -23,7 +23,8 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/register', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      const response = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -42,8 +43,12 @@ const Register: React.FC = () => {
         navigate('/login');
       }, 3000);
       
-    } catch (error: any) {
-      setErrorMsg(error.message || 'Error de conexión');
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg('Error de conexión');
+      }
     } finally {
       setLoading(false);
     }

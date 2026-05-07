@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { PackageSearch, MessageCircle, X } from 'lucide-react';
+import { PackageSearch, MessageCircle, X, Bot } from 'lucide-react';
 import StoreChatWidget from '../components/StoreChatWidget';
 import { motion } from 'framer-motion';
 
@@ -21,7 +21,8 @@ export default function Storefront() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/store/${slug}/products`);
+        const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+        const response = await fetch(`${API_URL}/api/store/${slug}/products`);
         const data = await response.json();
         setProducts(data);
       } catch (error) {

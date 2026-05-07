@@ -12,8 +12,7 @@ class ProductCreate(ProductBase):
 
 class ProductOut(ProductBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 class BotRuleBase(BaseModel):
     trigger_keyword: str
@@ -24,8 +23,7 @@ class BotRuleCreate(BotRuleBase):
 
 class BotRuleOut(BotRuleBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 class ClientBase(BaseModel):
     name: str
@@ -38,8 +36,7 @@ class ClientCreate(ClientBase):
 
 class ClientOut(ClientBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 class DashboardStats(BaseModel):
     total_sales: float
@@ -50,7 +47,7 @@ class DashboardStats(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
-# --- Nuevos Esquemas de Autenticación ---
+# --- Autenticación ---
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -59,7 +56,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     tenant_id: Optional[int] = None
-    role: str # 'tenant' o 'superadmin'
+    role: str
 
 class UserInfo(BaseModel):
     id: int
@@ -79,6 +76,5 @@ class TenantOut(BaseModel):
     name: str
     owner_email: str
     slug: str
-    advisor_phone: str
-    class Config:
-        orm_mode = True
+    advisor_phone: Optional[str] = None
+    model_config = {"from_attributes": True}

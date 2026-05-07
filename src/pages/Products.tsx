@@ -9,11 +9,8 @@ interface Product {
   category?: string;
 }
 
-import { useAuth } from '../context/AuthContext';
-
+import { apiFetch } from '../services/api';
 const Products: React.FC = () => {
-  const { user } = useAuth();
-  const TENANT_ID = user?.id;
   
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,11 +22,11 @@ const Products: React.FC = () => {
   // 3. Función para traer productos del backend
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/store/${TENANT_ID}/products`);
+      const response = await apiFetch(`/api/products`);
       const data = await response.json();
       setProducts(data);
-    } catch (error) {
-      console.error("Error cargando productos:", error);
+    } catch {
+      console.error("Error cargando productos:");
     } finally {
       setLoading(false);
     }
@@ -37,6 +34,7 @@ const Products: React.FC = () => {
 
   // Ejecutar al cargar la página
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProducts();
   }, []);
 
@@ -46,7 +44,7 @@ const Products: React.FC = () => {
     if (!formData.name || !formData.price) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/products/${TENANT_ID}`, {
+      const response = await apiFetch(`/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -61,17 +59,17 @@ const Products: React.FC = () => {
         setShowForm(false); // Ocultar formulario
         fetchProducts(); // Recargar la lista visualmente
       }
-    } catch (error) {
+    } catch {
       alert("Error al guardar el producto");
     }
   };
 
   const deleteProduct = async (id: number) => {
     try {
-      await fetch(`http://localhost:8000/api/products/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
       fetchProducts();
-    } catch (error) {
-      console.error("Error eliminando", error);
+    } catch {
+      console.error("Error eliminando");
     }
   };
 

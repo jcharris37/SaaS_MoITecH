@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, X, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/api';
 
 interface ClientData {
   id?: number;
@@ -13,8 +13,6 @@ interface ClientData {
 }
 
 const Clients: React.FC = () => {
-  const { user } = useAuth();
-  const TENANT_ID = user?.id;
 
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,17 +21,18 @@ const Clients: React.FC = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/clients/${TENANT_ID}`);
+      const response = await apiFetch(`/api/clients`);
       const data = await response.json();
       setClients(data);
-    } catch (error) {
-      console.error("Error cargando clientes:", error);
+    } catch {
+      console.error("Error cargando clientes:");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchClients();
   }, []);
 
@@ -42,7 +41,7 @@ const Clients: React.FC = () => {
     if (!formData.name || !formData.phone) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/clients/${TENANT_ID}`, {
+      const response = await apiFetch(`/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -58,17 +57,17 @@ const Clients: React.FC = () => {
         setShowForm(false);
         fetchClients();
       }
-    } catch (error) {
+    } catch {
       alert("Error al guardar cliente");
     }
   };
 
   const deleteClient = async (id: number) => {
     try {
-      await fetch(`http://localhost:8000/api/clients/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/clients/${id}`, { method: 'DELETE' });
       fetchClients();
-    } catch (error) {
-      console.error("Error eliminando cliente", error);
+    } catch {
+      console.error("Error eliminando cliente");
     }
   };
 
@@ -125,7 +124,7 @@ const Clients: React.FC = () => {
         </div>
         
         {loading ? (
-           <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
+          <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
         ) : (
           <div className="table-responsive">
             <table className="table border-0 mb-0" style={{color: 'var(--text-main)', backgroundColor: 'transparent'}}>

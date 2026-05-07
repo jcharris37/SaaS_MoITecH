@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, X } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface StoreChatWidgetProps {
@@ -38,7 +38,8 @@ const StoreChatWidget: React.FC<StoreChatWidgetProps> = ({ slug }) => {
     setIsTyping(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/store/${slug}/chat`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      const response = await fetch(`${API_URL}/api/store/${slug}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg })
@@ -51,7 +52,7 @@ const StoreChatWidget: React.FC<StoreChatWidgetProps> = ({ slug }) => {
         setIsTyping(false);
       }, 800); // Simulamos retraso de tipeo
 
-    } catch (error) {
+    } catch {
       setTimeout(() => {
         setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', text: 'Hubo un error de conexión.' }]);
         setIsTyping(false);

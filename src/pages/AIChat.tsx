@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, Save, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/api';
 
 interface BotRule {
   id: number;
@@ -11,8 +11,6 @@ interface BotRule {
 }
 
 const AIChat: React.FC = () => {
-  const { user } = useAuth();
-  const TENANT_ID = user?.id;
 
   const [rules, setRules] = useState<BotRule[]>([]);
   const [newCommand, setNewCommand] = useState('');
@@ -21,7 +19,7 @@ const AIChat: React.FC = () => {
 
   const fetchRules = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/rules/${TENANT_ID}`);
+      const response = await apiFetch(`/api/rules`);
       const data = await response.json();
       setRules(data);
     } catch (error) {
@@ -32,6 +30,7 @@ const AIChat: React.FC = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRules();
   }, []);
 
@@ -40,7 +39,7 @@ const AIChat: React.FC = () => {
     if (!newCommand || !newResponse) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/rules/${TENANT_ID}`, {
+      const response = await apiFetch(`/api/rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,17 +53,17 @@ const AIChat: React.FC = () => {
         setNewResponse('');
         fetchRules();
       }
-    } catch (error) {
+    } catch {
       alert("Error guardando la regla");
     }
   };
 
   const deleteRule = async (id: number) => {
     try {
-      await fetch(`http://localhost:8000/api/rules/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/rules/${id}`, { method: 'DELETE' });
       fetchRules();
-    } catch (error) {
-      console.error("Error eliminando regla", error);
+    } catch {
+      console.error("Error eliminando regla");
     }
   };
 

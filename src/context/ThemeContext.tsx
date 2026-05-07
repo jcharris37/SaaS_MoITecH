@@ -1,15 +1,16 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 
 type ThemeType = 'light' | 'dark';
 
-interface ThemeContextProps {
+export interface ThemeContextProps {
   theme: ThemeType;
   toggleTheme: () => void;
   accentColor: string;
   setAccentColor: (color: string) => void;
 }
 
-const ThemeContext = createContext<ThemeContextProps>({
+// eslint-disable-next-line react-refresh/only-export-components
+export const ThemeContext = createContext<ThemeContextProps>({
   theme: 'light',
   toggleTheme: () => {},
   accentColor: '#3b82f6',
@@ -38,5 +39,3 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     </ThemeContext.Provider>
   );
 };
-
-export const useTheme = () => useContext(ThemeContext);
