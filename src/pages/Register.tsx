@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Store, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/useAuth';
 import './Login.css'; // Reutilizamos los estilos del login
 
 const Register: React.FC = () => {
@@ -14,7 +15,14 @@ const Register: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'superadmin' ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Building, ShieldCheck } from 'lucide-react';
@@ -12,8 +12,14 @@ const Login: React.FC = () => {
   const [role, setRole] = useState<'tenant' | 'superadmin'>('tenant');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'superadmin' ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.SyntheticEvent) => {
     e.preventDefault();
