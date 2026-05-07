@@ -9,7 +9,7 @@ import random
 import auth
 from jose import jwt, JWTError
 import re
-
+from typing import List
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Moihub Storefront & Admin API")
@@ -178,7 +178,7 @@ def register_tenant(tenant: schemas.TenantCreate, db: Session = Depends(get_db))
 # ==========================================
 # 👑 ADMIN
 # ==========================================
-@app.get("/api/tenants", response_model=list[schemas.TenantOut])
+@app.get("/api/tenants", response_model=List[schemas.TenantOut])
 def get_all_tenants(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return db.query(models.Tenant).all()
 
@@ -205,7 +205,7 @@ def delete_tenant(
 # ==========================================
 # 🌍 PUBLIC STORE
 # ==========================================
-@app.get("/api/store/{slug}/products", response_model=list[schemas.ProductOut])
+@app.get("/api/store/{slug}/products", response_model=List[schemas.ProductOut])
 def get_store_products(slug: str, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
     if not tenant:
@@ -251,7 +251,7 @@ def store_chat(slug: str, req: schemas.ChatRequest, db: Session = Depends(get_db
 # ==========================================
 
 # PRODUCTOS
-@app.get("/api/products", response_model=list[schemas.ProductOut])
+@app.get("/api/products", response_model=List[schemas.ProductOut])
 def get_products(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
     return db.query(models.Product).filter(models.Product.tenant_id == tenant_id).all()
@@ -290,13 +290,13 @@ def delete_product(product_id: int, user=Depends(get_current_user), db: Session 
     return {"status": "ok"}
 
 # CLIENTES
-@app.get("/api/clients", response_model=list[schemas.ClientOut])
+@app.get("/api/clients", response_model=List[schemas.ClientOut])
 def get_clients(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
     return db.query(models.Client).filter(models.Client.tenant_id == tenant_id).all()
 
 # REGLAS DEL BOT (IVR)
-@app.get("/api/rules", response_model=list[schemas.BotRuleOut])
+@app.get("/api/rules", response_model=List[schemas.BotRuleOut])
 def get_rules(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
     return db.query(models.BotRule).filter(models.BotRule.tenant_id == tenant_id).all()

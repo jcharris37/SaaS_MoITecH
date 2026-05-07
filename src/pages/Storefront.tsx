@@ -21,7 +21,7 @@ export default function Storefront() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+        const API_URL = import.meta.env.VITE_API_URL || '/api';
         const response = await fetch(`${API_URL}/api/store/${slug}/products`);
         const data = await response.json();
         setProducts(data);
