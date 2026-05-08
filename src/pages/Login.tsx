@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Building, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
+import { apiFetch } from '../services/api';
 import './Login.css';
 
 const Login: React.FC = () => {
@@ -30,11 +31,9 @@ const Login: React.FC = () => {
     const loginPassword = role === 'superadmin' && !password ? 'admin123' : password;
 
     try {
-      // 🔐 LOGIN
-      const API_URL = import.meta.env.VITE_API_URL || '/api';
-      const response = await fetch(`${API_URL}/api/login`, {
+      // 🔐 LOGIN — usa apiFetch (URL relativa, compatible con Vercel y dev local)
+      const response = await apiFetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
       });
 
@@ -54,7 +53,7 @@ const Login: React.FC = () => {
       localStorage.setItem("token", data.access_token);
 
       // 👤 Obtener usuario autenticado
-      const userRes = await fetch(`${API_URL}/api/me`, {
+      const userRes = await apiFetch('/api/me', {
         headers: {
           'Authorization': `Bearer ${data.access_token}`
         }

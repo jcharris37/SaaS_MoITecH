@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+// En producción (Vercel) el frontend y backend comparten dominio → URL vacía
+// En desarrollo local, Vite hace proxy de /api/* → http://127.0.0.1:8000
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("token");
