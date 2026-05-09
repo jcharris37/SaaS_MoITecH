@@ -10,6 +10,8 @@ import auth
 from jose import jwt, JWTError
 import re
 from typing import List
+from datetime import datetime, timedelta   
+import os                                  
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Moihub Storefront & Admin API")
@@ -70,12 +72,26 @@ def require_admin(user=Depends(get_current_user)):
 @app.post("/api/login", response_model=schemas.Token)
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
 
-    if req.email == "admin@moihub.com" and req.password == "admin123":
+    if req.email == os.getenv("ADMIN_EMAIL") and req.password == os.getenv("ADMIN_PASSWORD"):
         access_token = auth.create_access_token(
             data={"sub": "admin", "role": "superadmin", "tenant_id": 0}
         )
+        refresh_token = auth.create_refresh_token(                    # ← NUEVO
+            data={"sub": "admin", "role": "superadmin", "tenant_id": 0}
+        )
+        # Guardar refresh token en BD
+        expires = datetime.utcnow() + timedelta(days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)))
+        db.add(models.RefreshToken(
+            token=refresh_token,
+            tenant_id=None,
+            expires_at=expires.isoformat(),
+            revoked=0
+        ))
+        db.commit()
+
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token,                           
             "token_type": "bearer",
             "tenant_id": 0,
             "role": "superadmin"
@@ -89,20 +105,29 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
     access_token = auth.create_access_token(
-        data={
-            "sub": tenant.owner_email,
-            "role": "tenant",
-            "tenant_id": tenant.id
-        }
+        data={"sub": tenant.owner_email, "role": "tenant", "tenant_id": tenant.id}
     )
+    refresh_token = auth.create_refresh_token(                        # ← NUEVO
+        data={"sub": tenant.owner_email, "role": "tenant", "tenant_id": tenant.id}
+    )
+
+    # Guardar refresh token en BD                                     # ← NUEVO
+    expires = datetime.utcnow() + timedelta(days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)))
+    db.add(models.RefreshToken(
+        token=refresh_token,
+        tenant_id=tenant.id,
+        expires_at=expires.isoformat(),
+        revoked=0
+    ))
+    db.commit()
 
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,                               # ← NUEVO
         "token_type": "bearer",
         "tenant_id": tenant.id,
         "role": "tenant"
     }
-
 @app.get("/api/me", response_model=schemas.UserInfo)
 def read_users_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
 
@@ -351,6 +376,61 @@ def get_stats(user=Depends(get_current_user), db: Session = Depends(get_db)):
         total_products=prods,
         total_messages=random.randint(50, 200)
     )
+
+# ==========================================
+# 🔄 REFRESH & LOGOUT
+# ==========================================
+@app.post("/api/refresh", response_model=schemas.Token)
+def refresh_token(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    try:
+        payload = auth.decode_refresh_token(req.refresh_token)
+    except JWTError:
+        raise HTTPException(status_code=403, detail="Refresh token inválido o expirado")
+
+    stored = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == req.refresh_token,
+        models.RefreshToken.revoked == 0
+    ).first()
+
+    if not stored:
+        raise HTTPException(status_code=403, detail="Refresh token revocado")
+
+    # Revocar el viejo
+    stored.revoked = 1
+    db.commit()
+
+    # Generar nuevos tokens
+    new_payload = {"sub": payload["sub"], "role": payload["role"], "tenant_id": payload["tenant_id"]}
+    new_access  = auth.create_access_token(new_payload)
+    new_refresh = auth.create_refresh_token(new_payload)
+
+    expires = datetime.utcnow() + timedelta(days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)))
+    db.add(models.RefreshToken(
+        token=new_refresh,
+        tenant_id=payload["tenant_id"] if payload["tenant_id"] != 0 else None,
+        expires_at=expires.isoformat(),
+        revoked=0
+    ))
+    db.commit()
+
+    return {
+        "access_token": new_access,
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+        "tenant_id": payload["tenant_id"],
+        "role": payload["role"],
+    }
+
+
+@app.post("/api/logout")
+def logout(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    stored = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == req.refresh_token
+    ).first()
+    if stored:
+        stored.revoked = 1
+        db.commit()
+    return {"message": "Sesión cerrada correctamente"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

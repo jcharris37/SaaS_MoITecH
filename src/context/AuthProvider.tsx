@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import type { User } from './AuthContext';
-import { apiFetch } from '../services/api';
+import { apiFetch, saveTokens, clearTokens, logout as apiLogout } from '../services/api';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       } catch (error) {
         console.error('Error auth:', error);
-        localStorage.removeItem('token');
+        clearTokens();
         setUser(null);
         setToken(null);
       } finally {
@@ -47,14 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem('token', newToken);
+  const login = (newToken: string, newUser: User, refreshToken: string) => {
+    saveTokens(newToken, refreshToken ?? ' ');
     setToken(newToken);
     setUser(newUser);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    await apiLogout(); 
     setUser(null);
     setToken(null);
   };

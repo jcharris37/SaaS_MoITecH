@@ -45,3 +45,14 @@ class Client(Base):
     status = Column(String, default="Activo")
     
     tenant = relationship("Tenant", back_populates="clients")
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
+    expires_at = Column(String)   # ISO string, fácil de comparar
+    revoked = Column(Integer, default=0)  # 0 = válido, 1 = revocado
+
+    tenant = relationship("Tenant")

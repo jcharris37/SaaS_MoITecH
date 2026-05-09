@@ -25,13 +25,12 @@ dist-ssr
 
 # ─── Variables de entorno (¡nunca subir secretos!) ───
 .env
-.env.local
-.env.production
-backend/.env
-api/.env
+.env.*
+!.env.example
 
 # ─── Python artifacts ───
 __pycache__/
+backend/__pycache__/
 *.py[cod]
 *.pyo
 *.pyd
@@ -40,3 +39,12 @@ __pycache__/
 .eggs/
 *.db
 *.sqlite3
+
+# ─── Python entorno virtual ───
+venv/
+backend/venv/
+.venv/
+env/
+
+# ─── Archivos de sistema ───
+Thumbs.db

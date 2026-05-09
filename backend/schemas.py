@@ -78,3 +78,12 @@ class TenantOut(BaseModel):
     slug: str
     advisor_phone: Optional[str] = None
     model_config = {"from_attributes": True}
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str     
+    token_type: str
+    tenant_id: Optional[int] = None
+    role: str
+
+class RefreshRequest(BaseModel):     
+    refresh_token: str

@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Building, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import { apiFetch } from '../services/api';
+import { apiFetch, saveTokens } from '../services/api';
 import './Login.css';
+
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -26,15 +27,10 @@ const Login: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
-
-    const loginEmail = role === 'superadmin' ? 'admin@moihub.com' : email;
-    const loginPassword = role === 'superadmin' && !password ? 'admin123' : password;
-
     try {
-      // 🔐 LOGIN — usa apiFetch (URL relativa, compatible con Vercel y dev local)
       const response = await apiFetch('/api/login', {
         method: 'POST',
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+        body: JSON.stringify({ email, password })
       });
 
       if (!response.ok) {
@@ -44,15 +40,14 @@ const Login: React.FC = () => {
 
       const data = await response.json();
 
-      // 🔥 Validar token
+
       if (!data.access_token) {
         throw new Error("Token no recibido del servidor");
       }
 
-      // 💾 Guardar token
-      localStorage.setItem("token", data.access_token);
 
-      // 👤 Obtener usuario autenticado
+      saveTokens(data.access_token, data.refresh_token);
+
       const userRes = await apiFetch('/api/me', {
         headers: {
           'Authorization': `Bearer ${data.access_token}`
@@ -65,10 +60,9 @@ const Login: React.FC = () => {
 
       const userData = await userRes.json();
 
-      // 🔥 Guardar en contexto
-      login(data.access_token, userData);
 
-      // 🚀 Redirección según rol
+      login(data.access_token, userData, data.refresh_token);
+
       if (userData.role === 'superadmin') {
         navigate('/admin');
       } else {
