@@ -87,9 +87,19 @@ const Dashboard: React.FC = () => {
 
         <button 
           onClick={() => {
-            navigator.clipboard.writeText(`${window.location.origin}/tienda/${user.slug}`);
-            alert('¡Enlace de tu tienda copiado!');
-          }}
+              const url = `${window.location.origin}/tienda/${user.slug}`;
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+              } else {
+                const el = document.createElement('textarea');
+                el.value = url;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+              }
+              alert('¡Enlace de tu tienda copiado!');
+           }}
           className="btn text-white fw-bold d-flex align-items-center gap-2 shadow-lg"
           style={{background: 'linear-gradient(135deg, var(--accent-color), #ea580c)', border: 'none', borderRadius: '12px'}}
         >

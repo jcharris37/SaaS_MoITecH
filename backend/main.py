@@ -10,27 +10,27 @@ import auth
 from jose import jwt, JWTError
 import re
 from typing import List
-from datetime import datetime, timedelta   
-import os                                  
+from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+load_dotenv('/home/ubuntu/SaaS_MoITecH/backend/.env')
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Moihub Storefront & Admin API")
 
-# 🔐 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+	"http://163.192.2.96",
+
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ==========================================
-# 🔐 AUTH HELPERS
-# ==========================================
 def get_current_user(request: Request):
     auth_header = request.headers.get("Authorization")
 
@@ -42,7 +42,7 @@ def get_current_user(request: Request):
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
 
-        # 🔥 VALIDACIÓN FUERTE
+       
         if "role" not in payload:
             raise HTTPException(status_code=401, detail="Token inválido")
 
@@ -72,7 +72,7 @@ def require_admin(user=Depends(get_current_user)):
 @app.post("/api/login", response_model=schemas.Token)
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
 
-    if req.email == os.getenv("ADMIN_EMAIL") and req.password == os.getenv("ADMIN_PASSWORD"):
+    if req.password == os.getenv("ADMIN_PASSWORD") and req.email in [os.getenv("ADMIN_EMAIL"),""]:
         access_token = auth.create_access_token(
             data={"sub": "admin", "role": "superadmin", "tenant_id": 0}
         )
@@ -220,7 +220,7 @@ def delete_tenant(
 
     if not tenant:
         raise HTTPException(status_code=404, detail="Negocio no encontrado")
-
+    db.query(models.RefreshToken).filter(models.RefreshToken.tenant_id == tenant_id).delete()
     db.delete(tenant)
     db.commit()
 
