@@ -10,10 +10,15 @@ class Tenant(Base):
     hashed_password = Column(String) # NUEVO: Para el login
     advisor_phone = Column(String) 
     slug = Column(String, unique=True, index=True)
+    logo_url = Column(String, nullable=True)
+    theme_color = Column(String, default="#ea580c")
+    business_type = Column(String, default="retail")
     
     products = relationship("Product", back_populates="tenant")
     bot_rules = relationship("BotRule", back_populates="tenant")
     clients = relationship("Client", back_populates="tenant")
+    service_providers = relationship("ServiceProvider", back_populates="tenant", cascade="all, delete")
+    appointments = relationship("Appointment", back_populates="tenant", cascade="all, delete")
 
 class Product(Base):
     __tablename__ = "products"
@@ -23,6 +28,8 @@ class Product(Base):
     price = Column(Float)
     stock = Column(Integer, default=0)
     category = Column(String, default="General")
+    image_url = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
     
     tenant = relationship("Tenant", back_populates="products")
 
@@ -56,3 +63,27 @@ class RefreshToken(Base):
     revoked = Column(Integer, default=0)  # 0 = válido, 1 = revocado
 
     tenant = relationship("Tenant")
+
+class ServiceProvider(Base):
+    __tablename__ = "service_providers"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    name = Column(String, index=True)
+    profile_image = Column(String, nullable=True)
+
+    tenant = relationship("Tenant", back_populates="service_providers")
+    appointments = relationship("Appointment", back_populates="provider")
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    provider_id = Column(Integer, ForeignKey("service_providers.id"))
+    client_name = Column(String)
+    client_phone = Column(String, nullable=True)
+    date = Column(String) # YYYY-MM-DD
+    time = Column(String) # HH:MM
+    status = Column(String, default="Pendiente")
+
+    tenant = relationship("Tenant", back_populates="appointments")
+    provider = relationship("ServiceProvider", back_populates="appointments")

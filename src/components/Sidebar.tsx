@@ -5,7 +5,8 @@ import {
   Users,
   PackageSearch,
   MessageSquareText,
-  LogOut
+  LogOut,
+  CalendarDays
 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import './Sidebar.css';
@@ -53,9 +54,17 @@ const Sidebar: React.FC = () => {
         <NavLink to="/clients" className={({ isActive }) => `nav-link sidebar-link ${isActive ? 'active' : ''}`}>
           <Users size={20} /> Clientes
         </NavLink>
-        <NavLink to="/products" className={({ isActive }) => `nav-link sidebar-link ${isActive ? 'active' : ''}`}>
-          <PackageSearch size={20} /> Productos
-        </NavLink>
+        
+        {user?.business_type === 'appointments' ? (
+          <NavLink to="/appointments" className={({ isActive }) => `nav-link sidebar-link ${isActive ? 'active' : ''}`}>
+            <CalendarDays size={20} /> Personal y Citas
+          </NavLink>
+        ) : (
+          <NavLink to="/products" className={({ isActive }) => `nav-link sidebar-link ${isActive ? 'active' : ''}`}>
+            <PackageSearch size={20} /> Productos
+          </NavLink>
+        )}
+
         <NavLink to="/chat" className={({ isActive }) => `nav-link sidebar-link ${isActive ? 'active' : ''}`}>
           <MessageSquareText size={20} /> Constructor de Bot
         </NavLink>

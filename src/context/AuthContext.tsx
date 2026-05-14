@@ -6,6 +6,7 @@ export interface User {
   email: string;
   slug: string;
   role: string;
+  business_type?: string;
 }
 
 export interface AuthContextType {

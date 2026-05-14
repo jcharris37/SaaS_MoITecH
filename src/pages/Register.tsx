@@ -3,14 +3,15 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Store, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import './Login.css'; // Reutilizamos los estilos del login
+import './Login.css'; 
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     owner_email: '',
     password: '',
-    advisor_phone: ''
+    advisor_phone: '',
+    business_type: 'retail'
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -130,6 +131,22 @@ const Register: React.FC = () => {
                       onChange={(e) => setFormData({...formData, advisor_phone: e.target.value})}
                       required 
                     />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="login-label">Tipo de Negocio</label>
+                  <div className="login-input-group">
+                    <Store size={18} className="input-icon" />
+                    <select 
+                      className="login-input" 
+                      style={{backgroundColor: 'transparent', border: 'none', color: '#fff'}}
+                      value={formData.business_type}
+                      onChange={(e) => setFormData({...formData, business_type: e.target.value})}
+                    >
+                      <option value="retail" style={{color: '#000'}}>Tienda de Productos</option>
+                      <option value="appointments" style={{color: '#000'}}>Citas / Reservas (Barbería, Odontología, etc.)</option>
+                    </select>
                   </div>
                 </div>
                 

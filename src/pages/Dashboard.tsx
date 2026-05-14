@@ -11,6 +11,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../context/useAuth';
+import { Image, Palette } from 'lucide-react';
 
 import { apiFetch } from '../services/api';
 
@@ -56,6 +57,54 @@ const Dashboard: React.FC = () => {
 
     fetchStats();
   }, []);
+
+  const [themeColor, setThemeColor] = useState('#ea580c');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      setSavingSettings(true);
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      setLogoUrl(data.url);
+      await apiFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logo_url: data.url })
+      });
+      alert('Logo actualizado');
+    } catch (error) {
+      console.error(error);
+      alert('Error subiendo logo');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const saveColor = async () => {
+    try {
+      setSavingSettings(true);
+      await apiFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme_color: themeColor })
+      });
+      alert('Color actualizado');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   // 🔥 evita crash si user aún no carga
   if (!user) {
@@ -164,6 +213,28 @@ const Dashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </motion.div>
+
+      {/* AJUSTES DE TIENDA */}
+      <div className="row g-4 mt-2 mb-4">
+        <motion.div variants={itemVariants} className="col-md-6">
+          <div className="card p-4 border-0 shadow-lg glass-panel h-100">
+            <h5 className="text-white mb-3 d-flex align-items-center gap-2"><Image size={20}/> Logo de la Tienda</h5>
+            <input type="file" accept="image/*" onChange={handleUploadLogo} className="form-control mb-3" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none'}} />
+            {logoUrl && <img src={logoUrl} alt="Logo" style={{height: '60px', objectFit: 'contain'}} />}
+            {savingSettings && <p className="text-muted small">Guardando...</p>}
+          </div>
+        </motion.div>
+        
+        <motion.div variants={itemVariants} className="col-md-6">
+          <div className="card p-4 border-0 shadow-lg glass-panel h-100">
+            <h5 className="text-white mb-3 d-flex align-items-center gap-2"><Palette size={20}/> Color de Tema</h5>
+            <div className="d-flex align-items-center gap-3">
+              <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} style={{width: '60px', height: '40px', cursor: 'pointer', border: 'none', background: 'transparent'}} />
+              <button onClick={saveColor} disabled={savingSettings} className="btn text-white" style={{background: 'linear-gradient(135deg, var(--accent-color), #ea580c)'}}>Guardar Color</button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
     </motion.div>
   );

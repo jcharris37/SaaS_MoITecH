@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException, File, UploadFile
+from fastapi.staticfiles import StaticFiles
+import shutil
+import sqlalchemy
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from sqlalchemy.orm import Session
@@ -13,10 +16,29 @@ from typing import List
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-load_dotenv('/home/ubuntu/SaaS_MoITecH/backend/.env')
+
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(env_path)
+
 Base.metadata.create_all(bind=engine)
 
+def run_migration(query: str):
+    try:
+        with engine.begin() as conn:
+            conn.execute(sqlalchemy.text(query))
+    except Exception:
+        pass
+
+run_migration("ALTER TABLE tenants ADD COLUMN logo_url VARCHAR")
+run_migration("ALTER TABLE tenants ADD COLUMN theme_color VARCHAR DEFAULT '#ea580c'")
+run_migration("ALTER TABLE tenants ADD COLUMN business_type VARCHAR DEFAULT 'retail'")
+run_migration("ALTER TABLE products ADD COLUMN image_url VARCHAR")
+run_migration("ALTER TABLE products ADD COLUMN description TEXT")
+
+os.makedirs("static/uploads", exist_ok=True)
+
 app = FastAPI(title="Moihub Storefront & Admin API")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,7 +159,8 @@ def read_users_me(user=Depends(get_current_user), db: Session = Depends(get_db))
             "name": "Super Admin",
             "email": "admin@moihub.com",
             "slug": "admin",
-            "role": "superadmin"
+            "role": "superadmin",
+            "business_type": "retail"
         }
 
     tenant_id = get_tenant_id(user)
@@ -154,7 +177,8 @@ def read_users_me(user=Depends(get_current_user), db: Session = Depends(get_db))
         "name": tenant.name,
         "email": tenant.owner_email,
         "slug": tenant.slug,
-        "role": "tenant"
+        "role": "tenant",
+        "business_type": tenant.business_type
     }
 
 # ==========================================
@@ -191,12 +215,26 @@ def register_tenant(tenant: schemas.TenantCreate, db: Session = Depends(get_db))
         owner_email=tenant.owner_email,
         hashed_password=hashed_pw,
         advisor_phone=tenant.advisor_phone,
-        slug=slug
+        slug=slug,
+        business_type=tenant.business_type
     )
 
     db.add(new_tenant)
     db.commit()
     db.refresh(new_tenant)
+
+    # Seed default bot rule based on business type
+    default_response = "Hola. Selecciona una opción:\n1. Ver Catálogo\n2. Hablar con asesor"
+    if tenant.business_type == "appointments":
+        default_response = "Hola. Selecciona una opción:\n1. Agendar Cita\n2. Hablar con asesor"
+    
+    db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="default", response_text=default_response))
+    db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="2", response_text="__REDIRECT_WHATSAPP__"))
+    if tenant.business_type == "appointments":
+        db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="1", response_text="Puedes agendar tu cita ingresando al enlace de nuestra web."))
+    else:
+        db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="1", response_text="Visita nuestro catálogo en la web."))
+    db.commit()
 
     return {"message": "Negocio registrado exitosamente", "slug": slug}
 
@@ -230,6 +268,20 @@ def delete_tenant(
 # ==========================================
 # 🌍 PUBLIC STORE
 # ==========================================
+@app.get("/api/store/{slug}/info")
+def get_store_info(slug: str, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada")
+    return {
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "logo_url": tenant.logo_url,
+        "theme_color": tenant.theme_color,
+        "business_type": tenant.business_type,
+        "advisor_phone": tenant.advisor_phone
+    }
+
 @app.get("/api/store/{slug}/products", response_model=List[schemas.ProductOut])
 def get_store_products(slug: str, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
@@ -275,6 +327,81 @@ def store_chat(slug: str, req: schemas.ChatRequest, db: Session = Depends(get_db
 # 🔐 PRIVATE (MULTI-TENANT SEGURO)
 # ==========================================
 
+# CONFIGURACIÓN
+@app.put("/api/settings")
+def update_settings(req: dict, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    
+    if "theme_color" in req:
+        tenant.theme_color = req["theme_color"]
+    if "logo_url" in req:
+        tenant.logo_url = req["logo_url"]
+        
+    db.commit()
+    return {"message": "Ajustes actualizados"}
+
+@app.post("/api/upload")
+async def upload_image(file: UploadFile = File(...)):
+    # Guardar localmente
+    file_location = f"static/uploads/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(file.file, file_object)
+    
+    # Podríamos usar variables de entorno para el dominio base, por ahora ruta relativa o absoluta local
+    # Para Vite, es mejor retornar la URL relativa al servidor
+    # El frontend luego antepone la VITE_API_URL
+    return {"url": f"/{file_location}"}
+
+# CITAS Y PERSONAL
+@app.get("/api/providers", response_model=List[schemas.ServiceProviderOut])
+def get_providers(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    return db.query(models.ServiceProvider).filter(models.ServiceProvider.tenant_id == tenant_id).all()
+
+@app.post("/api/providers", response_model=schemas.ServiceProviderOut)
+def create_provider(provider: schemas.ServiceProviderCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    new_prov = models.ServiceProvider(tenant_id=tenant_id, name=provider.name, profile_image=provider.profile_image)
+    db.add(new_prov)
+    db.commit()
+    db.refresh(new_prov)
+    return new_prov
+
+@app.get("/api/appointments", response_model=List[schemas.AppointmentOut])
+def get_appointments(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    return db.query(models.Appointment).filter(models.Appointment.tenant_id == tenant_id).all()
+
+# PUBLIC ENDPOINTS FOR APPOINTMENTS (used by Storefront)
+@app.get("/api/store/{slug}/providers", response_model=List[schemas.ServiceProviderOut])
+def get_store_providers(slug: str, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+    if not tenant:
+        return []
+    return db.query(models.ServiceProvider).filter(models.ServiceProvider.tenant_id == tenant.id).all()
+
+@app.post("/api/store/{slug}/appointments", response_model=schemas.AppointmentOut)
+def book_appointment(slug: str, appt: schemas.AppointmentCreate, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+        
+    new_appt = models.Appointment(
+        tenant_id=tenant.id,
+        provider_id=appt.provider_id,
+        client_name=appt.client_name,
+        client_phone=appt.client_phone,
+        date=appt.date,
+        time=appt.time
+    )
+    db.add(new_appt)
+    db.commit()
+    db.refresh(new_appt)
+    return new_appt
+
 # PRODUCTOS
 @app.get("/api/products", response_model=List[schemas.ProductOut])
 def get_products(user=Depends(get_current_user), db: Session = Depends(get_db)):
@@ -290,7 +417,9 @@ def create_product(product: schemas.ProductCreate, user=Depends(get_current_user
         name=product.name,
         price=product.price,
         stock=product.stock,
-        category=product.category
+        category=product.category,
+        image_url=product.image_url,
+        description=product.description
     )
 
     db.add(new_product)

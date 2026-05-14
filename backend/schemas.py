@@ -6,6 +6,8 @@ class ProductBase(BaseModel):
     price: float
     stock: int
     category: Optional[str] = "General"
+    image_url: Optional[str] = None
+    description: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -64,12 +66,14 @@ class UserInfo(BaseModel):
     email: str
     slug: str
     role: str
+    business_type: Optional[str] = "retail"
 
 class TenantCreate(BaseModel):
     name: str
     owner_email: str
     password: str
     advisor_phone: str
+    business_type: Optional[str] = "retail"
 
 class TenantOut(BaseModel):
     id: int
@@ -77,6 +81,37 @@ class TenantOut(BaseModel):
     owner_email: str
     slug: str
     advisor_phone: Optional[str] = None
+    logo_url: Optional[str] = None
+    theme_color: Optional[str] = "#ea580c"
+    business_type: Optional[str] = "retail"
+    model_config = {"from_attributes": True}
+
+class ServiceProviderBase(BaseModel):
+    name: str
+    profile_image: Optional[str] = None
+
+class ServiceProviderCreate(ServiceProviderBase):
+    pass
+
+class ServiceProviderOut(ServiceProviderBase):
+    id: int
+    tenant_id: int
+    model_config = {"from_attributes": True}
+
+class AppointmentBase(BaseModel):
+    provider_id: int
+    client_name: str
+    client_phone: Optional[str] = None
+    date: str
+    time: str
+
+class AppointmentCreate(AppointmentBase):
+    pass
+
+class AppointmentOut(AppointmentBase):
+    id: int
+    tenant_id: int
+    status: str
     model_config = {"from_attributes": True}
 class Token(BaseModel):
     access_token: str

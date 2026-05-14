@@ -14,6 +14,7 @@ import AIChat from './pages/AIChat';
 import Admin from './pages/Admin';
 import Storefront from './pages/Storefront';
 import Register from './pages/Register';
+import Appointments from './pages/Appointments';
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="clients" element={<Clients />} />
               <Route path="products" element={<Products />} />
+              <Route path="appointments" element={<Appointments />} />
               <Route path="chat" element={<AIChat />} />
             </Route>
 

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "concurrently \"npm run dev\" \"cd backend && uvicorn main:app --reload\"",
+    "dev:all": "concurrently \"npm run dev\" \"cd backend && python main.py\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
