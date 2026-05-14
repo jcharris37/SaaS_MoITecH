@@ -20,6 +20,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    env_file:
+      - ./backend/.env
     environment:
       - WHATSAPP_VERIFY_TOKEN=moihub_secreto_123
     restart: always
