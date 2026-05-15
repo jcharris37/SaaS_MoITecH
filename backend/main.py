@@ -500,10 +500,10 @@ def get_stats(user=Depends(get_current_user), db: Session = Depends(get_db)):
     clients = db.query(models.Client).filter(models.Client.tenant_id == tenant_id).count()
 
     return schemas.DashboardStats(
-        total_sales=1250.0 + (clients * 10),
+        total_sales=0,
         active_clients=clients,
         total_products=prods,
-        total_messages=random.randint(50, 200)
+        total_messages=0
     )
 
 # ==========================================
