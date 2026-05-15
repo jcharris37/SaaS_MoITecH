@@ -47,4 +47,4 @@ backend/venv/
 env/
 
 # ─── Archivos de sistema ───
-Thumbs.db
+Thumbs.dbbackend/*.save
