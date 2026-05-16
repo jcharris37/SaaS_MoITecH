@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../services/api';
 import { User, Calendar as CalendarIcon, Clock, X, Plus, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,44 +34,76 @@ export default function Appointments() {
   const [newProvider, setNewProvider] = useState({ name: '', profile_image: '' });
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
+
       const [provRes, apptRes] = await Promise.all([
         apiFetch('/api/providers'),
         apiFetch('/api/appointments')
       ]);
-      const provs = await provRes.json();
+
+      if (!provRes.ok || !apptRes.ok) {
+        throw new Error('Error cargando datos');
+      }
+
+      const provs: Provider[] = await provRes.json();
+      const appts: Appointment[] = await apptRes.json();
+
       setProviders(provs);
-      setAppointments(await apptRes.json());
-      setVisibleProviders(provs.map((p: Provider) => p.id));
+      setAppointments(appts);
+      setVisibleProviders(provs.map((p) => p.id));
+
     } catch (e) {
       console.error(e);
+
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const load = async () => {
+      await fetchData();
+    };
+    load();
+  }, [fetchData]);
+
+  const handleUploadImage = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (!e.target.files || e.target.files.length === 0) return;
+
     const file = e.target.files[0];
+
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
+
     try {
       setUploading(true);
+
       const API_URL = import.meta.env.VITE_API_URL || '';
+
       const response = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         body: formData
       });
+
+      if (!response.ok) {
+        throw new Error('Error subiendo imagen');
+      }
+
       const data = await response.json();
-      setNewProvider({ ...newProvider, profile_image: data.url });
+
+      setNewProvider((prev) => ({
+        ...prev,
+        profile_image: data.url
+      }));
+
     } catch (error) {
+      console.error(error);
       alert('Error subiendo imagen');
+
     } finally {
       setUploading(false);
     }
@@ -79,16 +111,31 @@ export default function Appointments() {
 
   const handleAddProvider = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProvider.name) return;
+
+    if (!newProvider.name.trim()) return;
+
     try {
-      await apiFetch('/api/providers', {
+      const response = await apiFetch('/api/providers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(newProvider)
       });
-      setNewProvider({ name: '', profile_image: '' });
+
+      if (!response.ok) {
+        throw new Error('Error creando profesional');
+      }
+
+      setNewProvider({
+        name: '',
+        profile_image: ''
+      });
+
       setShowModal(false);
-      fetchData();
+
+      await fetchData();
+
     } catch (error) {
       console.error(error);
     }
@@ -145,15 +192,20 @@ export default function Appointments() {
     // timeStr format "14:30"
     const [h, m] = timeStr.split(':').map(Number);
     const startHour = 8;
+    const endHour = 20;
     const hourHeight = 80; // matches CSS row height
-    if (h < startHour || h > 20) return 0;
-    
-    const offsetHours = h - startHour;
-    const offsetMins = m / 60;
+
+    // Clamp hour within visible range
+    const clampedH = Math.min(Math.max(h, startHour), endHour);
+    const offsetHours = clampedH - startHour;
+    const offsetMins = (clampedH < endHour ? m : 0) / 60;
     return (offsetHours + offsetMins) * hourHeight;
   };
 
   const activeProvs = providers.filter(p => visibleProviders.includes(p.id));
+
+  // Border color for inline styles (React does not support !important in style objects)
+  const borderColor = 'rgba(255,255,255,0.1)';
 
   return (
     <div className="container-fluid py-4 h-100 d-flex flex-column" style={{ minHeight: 'calc(100vh - 100px)' }}>
@@ -162,7 +214,7 @@ export default function Appointments() {
           <h2 className="dashboard-title text-gradient fw-bold mb-0">Scheduler Premium</h2>
           <p className="text-muted small">Gestión centralizada de citas y personal</p>
         </div>
-        <button 
+        <button
           onClick={() => setShowModal(true)}
           className="btn text-white px-4 py-2 fw-bold d-flex align-items-center gap-2 rounded-pill shadow-lg"
           style={{ background: 'linear-gradient(135deg, var(--accent-color), #9333ea)', border: 'none' }}
@@ -190,7 +242,7 @@ export default function Appointments() {
                 <ChevronRight size={20} />
               </button>
             </div>
-            <button 
+            <button
               onClick={setToday}
               className="btn w-100 btn-sm text-white rounded-3 shadow-sm"
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-color)' }}
@@ -217,10 +269,10 @@ export default function Appointments() {
                     <span className="text-white small fw-medium">{p.name}</span>
                   </div>
                   <div className="form-check form-switch m-0">
-                    <input 
-                      className="form-check-input" 
-                      type="checkbox" 
-                      role="switch" 
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      role="switch"
                       checked={visibleProviders.includes(p.id)}
                       onChange={() => toggleProvider(p.id)}
                       style={{ cursor: 'pointer' }}
@@ -232,7 +284,7 @@ export default function Appointments() {
             </div>
 
             <hr style={{ borderColor: 'var(--border-color)' }} />
-            
+
             <h6 className="text-white fw-bold mb-3 text-muted small">Estado de Citas</h6>
             <div className="d-flex flex-column gap-2">
               <div className="d-flex align-items-center gap-2">
@@ -254,7 +306,7 @@ export default function Appointments() {
         {/* MAIN CALENDAR GRID */}
         <div className="col-lg-9 col-xl-10 d-flex flex-column">
           <div className="card border-0 shadow-lg glass-panel flex-grow-1 overflow-hidden d-flex flex-column">
-            
+
             {loading ? (
               <div className="d-flex justify-content-center align-items-center h-100">
                 <div className="spinner-border text-primary" role="status"></div>
@@ -268,10 +320,10 @@ export default function Appointments() {
             ) : (
               <div className="d-flex flex-column h-100">
                 {/* Header Row (Providers) */}
-                <div className="d-flex border-bottom" style={{ borderColor: 'var(--border-color) !important', background: 'rgba(0,0,0,0.2)' }}>
-                  <div style={{ width: '60px', flexShrink: 0 }} className="border-end border-secondary"></div>
+                <div className="d-flex border-bottom" style={{ borderColor, background: 'rgba(0,0,0,0.2)' }}>
+                  <div style={{ width: '60px', flexShrink: 0, borderRight: `1px solid ${borderColor}` }}></div>
                   {activeProvs.map(p => (
-                    <div key={p.id} className="flex-grow-1 border-end text-center py-3" style={{ borderColor: 'var(--border-color) !important', minWidth: '150px' }}>
+                    <div key={p.id} className="flex-grow-1 text-center py-3" style={{ borderRight: `1px solid ${borderColor}`, minWidth: '150px' }}>
                       {p.profile_image ? (
                         <img src={p.profile_image} className="rounded-circle mb-2 shadow-sm" style={{ width: 40, height: 40, objectFit: 'cover' }} alt={p.name} />
                       ) : (
@@ -289,12 +341,12 @@ export default function Appointments() {
                   {/* Background Grid Lines */}
                   <div className="position-absolute w-100" style={{ top: 0, left: 0, pointerEvents: 'none' }}>
                     {hours.map(h => (
-                      <div key={h} className="d-flex border-bottom" style={{ height: '80px', borderColor: 'rgba(255,255,255,0.05) !important' }}>
+                      <div key={h} className="d-flex" style={{ height: '80px', borderBottom: `1px solid ${borderColor}` }}>
                         <div style={{ width: '60px', flexShrink: 0 }} className="text-muted small text-end pe-2 pt-2 fw-bold">
                           {h.toString().padStart(2, '0')}:00
                         </div>
                         {activeProvs.map(p => (
-                          <div key={p.id} className="flex-grow-1 border-end" style={{ borderColor: 'rgba(255,255,255,0.05) !important', minWidth: '150px' }}></div>
+                          <div key={p.id} className="flex-grow-1" style={{ borderRight: `1px solid ${borderColor}`, minWidth: '150px' }}></div>
                         ))}
                       </div>
                     ))}
@@ -319,7 +371,7 @@ export default function Appointments() {
                                   className="position-absolute w-100 px-1"
                                   style={{ top: `${calculateTop(appt.time)}px`, height: '76px', zIndex: 10 }}
                                 >
-                                  <div 
+                                  <div
                                     className="h-100 rounded-3 shadow-sm p-2 d-flex flex-column justify-content-between overflow-hidden"
                                     style={{ background: colors.bg, color: colors.text, borderLeft: `4px solid ${colors.text}` }}
                                   >
@@ -327,7 +379,7 @@ export default function Appointments() {
                                       {appt.client_name}
                                     </div>
                                     <div className="d-flex justify-content-between align-items-center">
-                                      <span className="small fw-medium" style={{ fontSize: '0.75rem' }}><Clock size={12} className="me-1"/>{appt.time}</span>
+                                      <span className="small fw-medium" style={{ fontSize: '0.75rem' }}><Clock size={12} className="me-1" />{appt.time}</span>
                                       {appt.status.toLowerCase().includes('conf') && <CheckCircle2 size={14} />}
                                     </div>
                                   </div>
@@ -351,12 +403,12 @@ export default function Appointments() {
       <AnimatePresence>
         {showModal && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="position-fixed top-0 start-0 w-100 h-100 bg-black bg-opacity-75" 
-              style={{ zIndex: 1040 }} 
+              className="position-fixed top-0 start-0 w-100 h-100 bg-black bg-opacity-75"
+              style={{ zIndex: 1040 }}
               onClick={() => setShowModal(false)}
             />
             <motion.div
@@ -388,17 +440,17 @@ export default function Appointments() {
                     </div>
                     {uploading && <p className="text-muted small mt-2">Subiendo imagen...</p>}
                   </div>
-                  
+
                   <div className="mb-4">
                     <label className="text-muted small mb-1">Nombre Completo</label>
-                    <input 
-                      type="text" 
-                      className="form-control rounded-3 py-2 text-white" 
-                      placeholder="Ej. Joseph Charris" 
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }} 
-                      value={newProvider.name} 
-                      onChange={e => setNewProvider({...newProvider, name: e.target.value})} 
-                      required 
+                    <input
+                      type="text"
+                      className="form-control rounded-3 py-2 text-white"
+                      placeholder="Ej. Joseph Charris"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}
+                      value={newProvider.name}
+                      onChange={e => setNewProvider({ ...newProvider, name: e.target.value })}
+                      required
                     />
                   </div>
                   <button type="submit" className="btn text-white w-100 rounded-pill py-2 fw-bold shadow" style={{ background: 'linear-gradient(135deg, var(--accent-color), #ea580c)', border: 'none' }} disabled={uploading}>

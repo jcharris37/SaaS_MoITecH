@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Building, ShieldCheck } from 'lucide-react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useAuth } from '../context/useAuth';
 import { apiFetch, saveTokens } from '../services/api';
 import './Login.css';
@@ -12,6 +13,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'tenant' | 'superadmin'>('tenant');
+  const [captchaToken, setCaptchaToken] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, user } = useAuth();
@@ -26,11 +28,18 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!captchaToken && role === 'tenant') {
+      setErrorMsg('Por favor, resuelve el captcha');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await apiFetch('/api/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, captcha_token: captchaToken })
       });
 
       if (!response.ok) {
@@ -126,20 +135,31 @@ const Login: React.FC = () => {
               </div>
 
               <form onSubmit={handleLogin}>
+                <div className="mb-4">
+                  <label className="login-label">Correo Electrónico</label>
+                  <div className="login-input-group">
+                    <Mail size={18} className="input-icon" />
+                    <input
+                      type="email"
+                      className="login-input"
+                      placeholder="correo@ejemplo.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
                 {role === 'tenant' && (
-                  <div className="mb-4">
-                    <label className="login-label">Correo Electrónico</label>
-                    <div className="login-input-group">
-                      <Mail size={18} className="input-icon" />
-                      <input
-                        type="email"
-                        className="login-input"
-                        placeholder="admin@voltix.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
+                  <div className="mb-4 d-flex justify-content-center" style={{minHeight: '80px'}}>
+                    <HCaptcha
+                      sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001"}
+                      onVerify={(token) => {
+                        setCaptchaToken(token);
+                        setErrorMsg('');
+                      }}
+                      onExpire={() => setCaptchaToken('')}
+                    />
                   </div>
                 )}
 

@@ -16,7 +16,6 @@ const Admin: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchTenants = async () => {
-    setLoading(true);
     try {
       const res = await apiFetch(`/api/tenants`);
       const data = await res.json();
@@ -39,6 +38,7 @@ const Admin: React.FC = () => {
       await apiFetch(`/api/tenants/${id}`, {
         method: 'DELETE'
       });
+      setLoading(true);
       fetchTenants();
     } catch {
       console.error('Error eliminando tenant');
@@ -107,7 +107,7 @@ const Admin: React.FC = () => {
             <Shield size={20} color="#ef4444" /> Negocios Activos
           </h5>
           <button
-            onClick={fetchTenants}
+            onClick={() => { setLoading(true); fetchTenants(); }}
             className="btn btn-sm d-flex align-items-center gap-2 text-white"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}
           >

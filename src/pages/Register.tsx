@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Store, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useAuth } from '../context/useAuth';
 import './Login.css'; 
 
@@ -11,7 +12,8 @@ const Register: React.FC = () => {
     owner_email: '',
     password: '',
     advisor_phone: '',
-    business_type: 'retail'
+    business_type: 'retail',
+    captcha_token: ''
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -29,7 +31,24 @@ const Register: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-    setLoading(true);
+    // Validaciones Estrictas
+    if (!formData.owner_email.endsWith('@gmail.com')) {
+      setErrorMsg('Por favor, usa un correo de @gmail.com');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.advisor_phone.length !== 10 || !/^\d+$/.test(formData.advisor_phone)) {
+      setErrorMsg('El teléfono debe tener exactamente 10 dígitos numéricos');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.captcha_token) {
+      setErrorMsg('Por favor, resuelve el captcha de seguridad');
+      setLoading(false);
+      return;
+    }
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || '';
@@ -164,6 +183,17 @@ const Register: React.FC = () => {
                       minLength={6}
                     />
                   </div>
+                </div>
+
+                <div className="mb-4 d-flex justify-content-center" style={{minHeight: '80px'}}>
+                  <HCaptcha
+                    sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001"}
+                    onVerify={(token) => {
+                      setFormData(prev => ({...prev, captcha_token: token}));
+                      setErrorMsg('');
+                    }}
+                    onExpire={() => setFormData(prev => ({...prev, captcha_token: ''}))}
+                  />
                 </div>
 
                 {errorMsg && (

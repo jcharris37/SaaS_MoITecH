@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
 load_dotenv(env_path)
 
-Base.metadata.create_all(bind=engine)
+load_dotenv(env_path)
 
 def run_migration(query: str):
     try:
@@ -40,12 +40,21 @@ os.makedirs("static/uploads", exist_ok=True)
 app = FastAPI(title="Moihub Storefront & Admin API")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.on_event("startup")
+def startup_event():
+    # Solo intentamos crear las tablas básicas. Si faltan columnas, 
+    # daremos un mensaje pero no bloquearemos el inicio del servidor.
+    try:
+        models.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Error en base de datos: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-	"http://163.192.2.96",
+	    "http://163.192.2.96",
 
     ],
     allow_credentials=True,
@@ -64,7 +73,6 @@ def get_current_user(request: Request):
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
 
-       
         if "role" not in payload:
             raise HTTPException(status_code=401, detail="Token inválido")
 
@@ -93,8 +101,12 @@ def require_admin(user=Depends(get_current_user)):
 # ==========================================
 @app.post("/api/login", response_model=schemas.Token)
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
+    is_admin = req.password == os.getenv("ADMIN_PASSWORD") and req.email in [os.getenv("ADMIN_EMAIL"), ""]
+    if not is_admin and not req.captcha_token:
+        raise HTTPException(status_code=400, detail="Por favor, completa el captcha")
 
-    if req.password == os.getenv("ADMIN_PASSWORD") and req.email in [os.getenv("ADMIN_EMAIL"),""]:
+
+    if is_admin:
         access_token = auth.create_access_token(
             data={"sub": "admin", "role": "superadmin", "tenant_id": 0}
         )
@@ -199,6 +211,13 @@ def register_tenant(tenant: schemas.TenantCreate, db: Session = Depends(get_db))
 
     if existing:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
+
+    # Validar teléfono duplicado
+    phone_exists = db.query(models.Tenant).filter(
+        models.Tenant.advisor_phone == tenant.advisor_phone
+    ).first()
+    if phone_exists:
+        raise HTTPException(status_code=400, detail="Este número de teléfono ya está registrado con otro negocio")
 
     base_slug = generate_slug(tenant.name)
     slug = base_slug

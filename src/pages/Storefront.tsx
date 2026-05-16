@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { PackageSearch, MessageCircle, X, Bot } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MessageCircle, ShoppingCart, Calendar, Clock, MapPin, 
+  Phone, PackageSearch, X, Bot,
+  Mail, ArrowRight, Star, ShieldCheck, Users, Camera, Globe
+} from 'lucide-react';
+import { API_URL } from '../services/api';
 import StoreChatWidget from '../components/StoreChatWidget';
-import { motion } from 'framer-motion';
+import './Storefront.css';
 
 interface Product {
   id: number;
@@ -28,7 +34,10 @@ interface StoreInfo {
   theme_color?: string;
   business_type?: string;
   advisor_phone?: string;
+  business_address?: string;
 }
+
+const fmt = (n: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
 
 export default function Storefront() {
   const { slug } = useParams<{ slug: string }>();
@@ -42,13 +51,19 @@ export default function Storefront() {
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [apptForm, setApptForm] = useState({ client_name: '', client_phone: '', date: '', time: '' });
 
+  const getImageUrl = (path?: string) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    return `${API_URL}${path}`;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
+      if (!slug) return;
       try {
-        const API_URL = import.meta.env.VITE_API_URL || '';
-        
-        // Fetch info
+        setLoading(true);
         const infoRes = await fetch(`${API_URL}/api/store/${slug}/info`);
+        if (!infoRes.ok) throw new Error('Tienda no encontrada');
         const infoData = await infoRes.json();
         setStoreInfo(infoData);
         
@@ -56,30 +71,26 @@ export default function Storefront() {
           document.documentElement.style.setProperty('--accent-color', infoData.theme_color);
         }
 
-        // Fetch items based on type
         if (infoData.business_type === 'appointments') {
           const provRes = await fetch(`${API_URL}/api/store/${slug}/providers`);
-          setProviders(await provRes.json());
+          if (provRes.ok) setProviders(await provRes.json());
         } else {
           const prodRes = await fetch(`${API_URL}/api/store/${slug}/products`);
-          setProducts(await prodRes.json());
+          if (prodRes.ok) setProducts(await prodRes.json());
         }
-        
       } catch (error) {
         console.error("Error cargando tienda:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [slug]);
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProvider || !apptForm.client_name || !apptForm.date || !apptForm.time) return;
+    if (!slug || !selectedProvider || !apptForm.client_name || !apptForm.date || !apptForm.time) return;
     try {
-      const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/api/store/${slug}/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,185 +101,253 @@ export default function Storefront() {
         setApptForm({ client_name: '', client_phone: '', date: '', time: '' });
         setSelectedProvider(null);
       }
-    } catch (e) {
+    } catch {
       alert('Error agendando cita');
     }
   };
 
   const handleBuyWhatsApp = (productName: string) => {
-    // Redirige al WhatsApp del negocio. (Mock number for now)
-    const text = encodeURIComponent(`Hola, quisiera comprar: ${productName}. Vi esto en tu tienda online.`);
-    window.open(`https://wa.me/573000000000?text=${text}`, '_blank');
+    const text = encodeURIComponent(`Hola, quisiera comprar: ${productName}. Vi esto en tu tienda online de ${storeInfo?.name}.`);
+    const phone = storeInfo?.advisor_phone || '573000000000';
+    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
-  return (
-    <div className="min-vh-100 font-sans pb-5 position-relative overflow-hidden" style={{backgroundColor: 'var(--bg-color)', color: 'var(--text-main)'}}>
-      {/* Background Orbs */}
-      <div className="glow-orb" style={{top: '10%', left: '20%', background: 'radial-gradient(circle, rgba(255,94,0,0.15) 0%, transparent 70%)'}}></div>
-      <div className="glow-orb" style={{bottom: '20%', right: '10%', background: 'radial-gradient(circle, rgba(147,51,234,0.15) 0%, transparent 70%)'}}></div>
+  if (loading) {
+    return (
+      <div className="min-vh-100 d-flex justify-content-center align-items-center" style={{backgroundColor: '#0a0a0f'}}>
+        <div className="spinner-border text-primary" role="status"></div>
+      </div>
+    );
+  }
 
-      {/* Navbar estilo Moihub Store */}
-      <nav className="navbar navbar-dark glass-panel sticky-top mb-4 py-3" style={{borderBottom: '1px solid var(--border-color)'}}>
+  if (!storeInfo) {
+    return (
+      <div className="min-vh-100 d-flex flex-column justify-content-center align-items-center text-white" style={{backgroundColor: '#0a0a0f'}}>
+        <h2 className="display-4 fw-bold mb-3">404</h2>
+        <p className="text-muted">Tienda no encontrada</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="store-page">
+      {/* Decorative Orbs */}
+      <div className="premium-orb orb-1"></div>
+      <div className="premium-orb orb-2"></div>
+      
+      {/* Minimalist Navbar */}
+      <nav className="navbar navbar-dark sticky-top glass-header">
         <div className="container">
-          <span className="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2">
-            {storeInfo?.logo_url ? (
-               <img src={storeInfo.logo_url} alt="Logo" style={{height: '40px', objectFit: 'contain'}} />
+          <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="navbar-brand d-flex align-items-center gap-3">
+            {storeInfo.logo_url ? (
+              <img src={getImageUrl(storeInfo.logo_url)} alt="Logo" className="nav-logo" />
             ) : (
-               <><span className="text-white text-capitalize">{slug}</span><span className="text-gradient ms-2">Store</span></>
+              <div className="nav-logo-placeholder">{storeInfo.name[0]}</div>
             )}
-          </span>
-          <button 
+            <span className="brand-name">{storeInfo.name}</span>
+          </motion.div>
+          <motion.button 
+            initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
             onClick={() => setIsChatOpen(true)}
-            className="btn d-flex align-items-center gap-2 rounded-pill px-4 shadow-sm text-white"
-            style={{background: 'linear-gradient(135deg, var(--accent-color), #ea580c)', border: 'none'}}
+            className="btn-ia-assistant"
           >
-            <MessageCircle size={18} /> Asistente IA
-          </button>
+            <Bot size={18} /> <span>Asistente IA</span>
+          </motion.button>
         </div>
       </nav>
 
-      <div className="container mt-5 position-relative z-1">
-        <div className="mb-5 text-center">
-          <h2 className="dashboard-title text-gradient display-5 fw-bold">{storeInfo?.business_type === 'appointments' ? 'Reserva tu Cita' : 'Catálogo Oficial'}</h2>
-          <p className="text-muted fs-5">{storeInfo?.business_type === 'appointments' ? 'Selecciona al profesional y agenda tu espacio.' : 'Explora nuestros productos y chatea con nuestro bot para cualquier duda.'}</p>
-        </div>
+      <main className="container pt-5 pb-5 position-relative">
+        {/* Hero Section */}
+        <motion.section 
+          initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          className="text-center mb-5 mt-4"
+        >
+          <div className="badge-premium mb-3">Oficial de {storeInfo.name}</div>
+          <h1 className="hero-title">
+            {storeInfo.business_type === 'appointments' ? 'Reserva tu Experiencia' : 'Catálogo Exclusivo'}
+          </h1>
+          <p className="hero-subtitle mx-auto">
+            {storeInfo.business_type === 'appointments' 
+              ? 'Agenda tu cita con los mejores profesionales en pocos clics.' 
+              : 'Explora nuestra colección seleccionada de productos de alta calidad.'}
+          </p>
+        </motion.section>
 
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status"></div>
-          </div>
-        ) : storeInfo?.business_type === 'appointments' ? (
-          <div className="row g-4 justify-content-center">
-            {selectedProvider ? (
-              <div className="col-md-6">
-                <div className="card p-4 border-0 shadow-lg glass-panel text-white">
-                  <div className="d-flex align-items-center gap-3 mb-4">
-                    {selectedProvider.profile_image && <img src={selectedProvider.profile_image} className="rounded-circle" style={{width: 60, height: 60, objectFit: 'cover'}} />}
-                    <div>
-                      <h4 className="mb-0">Agendar con {selectedProvider.name}</h4>
-                      <button className="btn btn-link text-muted p-0 text-decoration-none" onClick={() => setSelectedProvider(null)}>Cambiar profesional</button>
-                    </div>
-                  </div>
-                  <form onSubmit={handleBookAppointment}>
-                    <div className="mb-3">
-                      <label>Tu Nombre</label>
-                      <input type="text" className="form-control" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none'}} value={apptForm.client_name} onChange={e => setApptForm({...apptForm, client_name: e.target.value})} required />
-                    </div>
-                    <div className="mb-3">
-                      <label>Tu Teléfono</label>
-                      <input type="text" className="form-control" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none'}} value={apptForm.client_phone} onChange={e => setApptForm({...apptForm, client_phone: e.target.value})} required />
-                    </div>
-                    <div className="row mb-4">
-                      <div className="col-6">
-                        <label>Fecha</label>
-                        <input type="date" className="form-control" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', colorScheme: 'dark'}} value={apptForm.date} onChange={e => setApptForm({...apptForm, date: e.target.value})} required />
+        {/* Content Section */}
+        <section className="store-content">
+          {storeInfo.business_type === 'appointments' ? (
+            <div className="row g-4 justify-content-center">
+              <AnimatePresence mode="wait">
+                {selectedProvider ? (
+                  <motion.div 
+                    key="booking-form"
+                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                    className="col-md-6"
+                  >
+                    <div className="booking-card">
+                      <div className="d-flex align-items-center gap-4 mb-4">
+                        <div className="provider-avatar-lg">
+                          {selectedProvider.profile_image ? (
+                            <img src={getImageUrl(selectedProvider.profile_image)} alt={selectedProvider.name} />
+                          ) : (
+                            <span>{selectedProvider.name[0]}</span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="mb-0 text-white fw-bold">Agendar con {selectedProvider.name}</h4>
+                          <button className="btn-change-prov" onClick={() => setSelectedProvider(null)}>Cambiar profesional</button>
+                        </div>
                       </div>
-                      <div className="col-6">
-                        <label>Hora</label>
-                        <input type="time" className="form-control" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', colorScheme: 'dark'}} value={apptForm.time} onChange={e => setApptForm({...apptForm, time: e.target.value})} required />
+                      <form onSubmit={handleBookAppointment} className="booking-form">
+                        <div className="row g-3">
+                          <div className="col-12">
+                            <label><Users size={14}/> Tu Nombre Completo</label>
+                            <input type="text" placeholder="Ej. Juan Pérez" value={apptForm.client_name} onChange={e => setApptForm({...apptForm, client_name: e.target.value})} required />
+                          </div>
+                          <div className="col-12">
+                            <label><Phone size={14}/> Teléfono de Contacto</label>
+                            <input type="text" placeholder="Ej. 300 123 4567" value={apptForm.client_phone} onChange={e => setApptForm({...apptForm, client_phone: e.target.value})} required />
+                          </div>
+                          <div className="col-6">
+                            <label><Calendar size={14}/> Fecha</label>
+                            <input type="date" value={apptForm.date} onChange={e => setApptForm({...apptForm, date: e.target.value})} required />
+                          </div>
+                          <div className="col-6">
+                            <label><Clock size={14}/> Hora</label>
+                            <input type="time" value={apptForm.time} onChange={e => setApptForm({...apptForm, time: e.target.value})} required />
+                          </div>
+                        </div>
+                        <button type="submit" className="btn-confirm-booking mt-4">
+                          Confirmar Reserva <ArrowRight size={18} />
+                        </button>
+                      </form>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="provider-list"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="row g-4 justify-content-center"
+                  >
+                    {providers.map(prov => (
+                      <div className="col-md-3 col-sm-6" key={prov.id}>
+                        <motion.div 
+                          whileHover={{ y: -10 }} 
+                          className="provider-card"
+                          onClick={() => setSelectedProvider(prov)}
+                        >
+                          <div className="provider-avatar">
+                            {prov.profile_image ? (
+                              <img src={getImageUrl(prov.profile_image)} alt={prov.name} />
+                            ) : (
+                              <span>{prov.name[0]}</span>
+                            )}
+                          </div>
+                          <h5 className="text-white fw-bold mb-1">{prov.name}</h5>
+                          <span className="text-accent small fw-bold">Disponibilidad Inmediata</span>
+                        </motion.div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="row g-4">
+              {products.map((product) => (
+                <div className="col-lg-4 col-md-6" key={product.id}>
+                  <motion.div whileHover={{ y: -10 }} className="product-card-premium">
+                    <div className="product-img-wrapper">
+                      {product.image_url ? (
+                        <img src={getImageUrl(product.image_url)} alt={product.name} />
+                      ) : (
+                        <div className="img-placeholder"><PackageSearch size={40}/></div>
+                      )}
+                      {product.stock <= 5 && product.stock > 0 && <span className="stock-tag">¡Últimas unidades!</span>}
+                      {product.stock === 0 && <span className="stock-tag out">Agotado</span>}
+                    </div>
+                    <div className="product-info-premium">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h5 className="product-name">{product.name}</h5>
+                        <div className="rating-mini"><Star size={12} fill="var(--accent-color)"/> 5.0</div>
+                      </div>
+                      <p className="product-desc">{product.description || 'Sin descripción disponible.'}</p>
+                      <div className="d-flex justify-content-between align-items-center mt-3">
+                        <div className="price-tag">{fmt(product.price)}</div>
+                        <button 
+                          onClick={() => handleBuyWhatsApp(product.name)}
+                          className="btn-buy-wa"
+                          disabled={product.stock === 0}
+                        >
+                          <ShoppingCart size={16} /> Comprar
+                        </button>
                       </div>
                     </div>
-                    <button type="submit" className="btn w-100 fw-bold text-white" style={{background: 'linear-gradient(135deg, var(--accent-color), #ea580c)'}}>Confirmar Cita</button>
-                  </form>
-                </div>
-              </div>
-            ) : (
-              providers.map(prov => (
-                <div className="col-md-3 text-center" key={prov.id}>
-                  <motion.div whileHover={{y: -5, scale: 1.05}} className="card p-4 h-100 border-0 shadow-lg glass-panel transition" onClick={() => setSelectedProvider(prov)} style={{cursor: 'pointer'}}>
-                    {prov.profile_image ? (
-                      <img src={prov.profile_image} className="rounded-circle mx-auto mb-3" style={{width: 80, height: 80, objectFit: 'cover'}} />
-                    ) : (
-                      <div className="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-secondary" style={{width: 80, height: 80}}><span className="fs-1 text-white">{prov.name[0]}</span></div>
-                    )}
-                    <h5 className="text-white fw-bold mb-0">{prov.name}</h5>
-                    <p className="text-gradient small mt-2 fw-bold">Seleccionar</p>
                   </motion.div>
                 </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="row g-4">
-            {products.map((product) => (
-              <div className="col-md-4" key={product.id}>
-                <motion.div whileHover={{y: -5}} className="card p-4 h-100 border-0 shadow-lg glass-panel transition">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="img-fluid rounded mb-3" style={{height: '200px', objectFit: 'cover', width: '100%'}} />
-                  ) : (
-                    <div className="d-flex justify-content-between align-items-start mb-3">
-                      <div className="p-3 rounded text-white" style={{background: 'linear-gradient(135deg, rgba(255,255,255,0.1), transparent)'}}>
-                        <PackageSearch size={24} />
-                      </div>
-                      <span className="badge text-white" style={{background: 'rgba(255,255,255,0.1)'}}>{product.category || 'General'}</span>
-                    </div>
-                  )}
-                  
-                  <h5 className="fw-bold mb-1 text-white">{product.name}</h5>
-                  {product.description && <p className="text-muted small mb-0">{product.description}</p>}
-                  
-                  <div className="d-flex justify-content-between align-items-end mt-4 mb-4">
-                    <div>
-                      <p className="text-muted mb-0" style={{fontSize: '0.8rem'}}>Precio</p>
-                      <span className="fw-bold fs-4 text-gradient">${product.price}</span>
-                    </div>
-                    <div className="text-end">
-                      <p className="text-muted mb-0" style={{fontSize: '0.8rem'}}>Disponibilidad</p>
-                      <span className={`fw-medium ${product.stock > 0 ? 'text-success' : 'text-danger'}`}>
-                        {product.stock > 0 ? `${product.stock} und` : 'Agotado'}
-                      </span>
-                    </div>
-                  </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
 
-                  <button 
-                    onClick={() => handleBuyWhatsApp(product.name)}
-                    className="btn w-100 rounded-3 fw-bold text-white mt-auto"
-                    style={{border: '1px solid var(--accent-color)', background: 'rgba(255,94,0,0.1)'}}
-                  >
-                    Comprar por WhatsApp
-                  </button>
-                </motion.div>
+      {/* Professional Footer */}
+      <footer className="footer-premium">
+        <div className="container">
+          <div className="row g-4 align-items-center">
+            <div className="col-md-4 text-center text-md-start">
+              <div className="footer-brand d-flex align-items-center gap-2 mb-3">
+                <div className="footer-dot"></div>
+                <h4 className="mb-0 fw-bold text-white">{storeInfo.name}</h4>
               </div>
-            ))}
+              <p className="small text-muted">Tu satisfacción es nuestra prioridad. Contáctanos para cualquier duda.</p>
+            </div>
+            <div className="col-md-4 text-center">
+              <div className="footer-contact">
+                {storeInfo.business_address && <p><MapPin size={16}/> {storeInfo.business_address}</p>}
+                <p><Phone size={16}/> {storeInfo.advisor_phone || 'N/A'}</p>
+                <p><Mail size={16}/> soporte@moihub.com</p>
+              </div>
+            </div>
+            <div className="col-md-4 text-center text-md-end">
+              <div className="footer-socials">
+                <button className="social-btn"><Camera size={18}/></button>
+                <button className="social-btn"><Globe size={18}/></button>
+                <button className="social-btn"><ShieldCheck size={18}/></button>
+              </div>
+              <p className="small text-muted mt-3 mb-0">© 2026 Moihub. Todos los derechos reservados.</p>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      </footer>
 
-      {/* Widget de Chat Flotante */}
+      {/* Floating Chat Widget */}
       {isChatOpen && (
         <motion.div 
-          initial={{opacity: 0, y: 50, scale: 0.9}}
-          animate={{opacity: 1, y: 0, scale: 1}}
-          className="position-fixed bottom-0 end-0 p-3" 
-          style={{ zIndex: 1050, width: '100%', maxWidth: '400px' }}
+          initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="chat-window-container"
         >
-          <div className="card shadow-lg border-0 rounded-4 overflow-hidden glass-panel">
-            <div className="card-header text-white d-flex justify-content-between align-items-center p-3" style={{background: 'linear-gradient(135deg, var(--accent-color), #9333ea)', borderBottom: 'none'}}>
-              <span className="fw-bold d-flex align-items-center gap-2"><Bot size={20}/> Bot de {slug}</span>
-              <button 
-                onClick={() => setIsChatOpen(false)} 
-                className="btn btn-sm text-white border-0 p-0"
-              >
-                <X size={24} />
-              </button>
+          <div className="chat-window-glass">
+            <div className="chat-header-premium">
+              <span className="fw-bold d-flex align-items-center gap-2"><Bot size={18}/> Asistente de {storeInfo.name}</span>
+              <button onClick={() => setIsChatOpen(false)} className="chat-close-btn"><X size={20} /></button>
             </div>
-            <div className="p-0" style={{height: '400px'}}>
+            <div className="chat-body-premium">
               <StoreChatWidget slug={slug || ''} />
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Botón flotante rápido (si el chat está cerrado) */}
+      {/* Quick Floating Button */}
       {!isChatOpen && (
         <motion.button 
-          whileHover={{scale: 1.1}}
-          whileTap={{scale: 0.9}}
+          whileHover={{ scale: 1.1, rotate: 5 }} whileTap={{ scale: 0.9 }}
           onClick={() => setIsChatOpen(true)}
-          className="btn position-fixed bottom-0 end-0 m-4 rounded-circle shadow-lg d-flex align-items-center justify-content-center text-white"
-          style={{ width: '60px', height: '60px', zIndex: 1000, background: 'linear-gradient(135deg, var(--accent-color), #ea580c)', border: 'none' }}
+          className="floating-chat-trigger"
         >
           <MessageCircle size={30} />
+          <div className="btn-ping"></div>
         </motion.button>
       )}
     </div>
