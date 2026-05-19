@@ -145,7 +145,7 @@ const Login: React.FC = () => {
                       placeholder="correo@ejemplo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required
+                      required={role ==='tenant'}
                     />
                   </div>
                 </div>

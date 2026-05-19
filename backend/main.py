@@ -522,7 +522,11 @@ def get_stats(user=Depends(get_current_user), db: Session = Depends(get_db)):
         total_sales=0,
         active_clients=clients,
         total_products=prods,
-        total_messages=0
+        total_messages=0,
+        paid_invoices=0,
+        pending_invoices=0,
+        total_appointments_today=0,
+        completed_appointments_today=0
     )
 
 # ==========================================
@@ -579,6 +583,54 @@ def logout(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
         stored.revoked = 1
         db.commit()
     return {"message": "Sesión cerrada correctamente"}
+
+# ==========================================
+# 🧾 INVOICES
+# ==========================================
+@app.get("/api/invoices", response_model=List[schemas.InvoiceOut])
+def get_invoices(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    return db.query(models.Invoice).filter(models.Invoice.tenant_id == tenant_id).order_by(models.Invoice.created_at.desc()).all()
+
+@app.post("/api/invoices", response_model=schemas.InvoiceOut)
+def create_invoice(data: schemas.InvoiceCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    count = db.query(models.Invoice).filter(models.Invoice.tenant_id == tenant_id).count()
+    invoice = models.Invoice(
+        tenant_id=tenant_id,
+        invoice_number=f"FAC-{count+1:04d}",
+        client_name=data.client_name,
+        client_phone=data.client_phone,
+        status=data.status,
+        total=sum(i.quantity * i.unit_price for i in data.items)
+    )
+    db.add(invoice)
+    db.flush()
+    for item in data.items:
+        db.add(models.InvoiceItem(invoice_id=invoice.id, **item.dict()))
+    db.commit()
+    db.refresh(invoice)
+    return invoice
+
+@app.patch("/api/invoices/{invoice_id}/status")
+def update_invoice_status(invoice_id: int, data: schemas.InvoiceStatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id, models.Invoice.tenant_id == tenant_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    inv.status = data.status
+    db.commit()
+    return {"ok": True}
+
+@app.delete("/api/invoices/{invoice_id}")
+def delete_invoice(invoice_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id, models.Invoice.tenant_id == tenant_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    db.delete(inv)
+    db.commit()
+    return {"ok": True}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

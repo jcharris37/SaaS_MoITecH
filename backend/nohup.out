@@ -1,0 +1,322 @@
+/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/jose/backends/cryptography_backend.py:4: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography.exceptions import InvalidSignature, InvalidTag
+INFO:     Started server process [804353]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     181.78.4.250:0 - "GET /api/register HTTP/1.1" 405 Method Not Allowed
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     181.78.4.250:0 - "GET /api/register HTTP/1.1" 405 Method Not Allowed
+INFO:     163.192.2.96:0 - "POST /api/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/applications.py", line 1139, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 120, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 106, in app
+    response = await f(request)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 430, in app
+    raw_response = await run_endpoint_function(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 318, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 2364, in run_sync_in_worker_thread
+    return await future
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 864, in run
+    result = context.run(func, *args)
+  File "/home/ubuntu/SaaS_MoITecH/backend/main.py", line 208, in register_tenant
+    existing = db.query(models.Tenant).filter(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+[SQL: SELECT tenants.id AS tenants_id, tenants.name AS tenants_name, tenants.owner_email AS tenants_owner_email, tenants.hashed_password AS tenants_hashed_password, tenants.advisor_phone AS tenants_advisor_phone, tenants.slug AS tenants_slug, tenants.logo_url AS tenants_logo_url, tenants.theme_color AS tenants_theme_color, tenants.business_type AS tenants_business_type, tenants.business_nit AS tenants_business_nit, tenants.business_address AS tenants_business_address, tenants.tax_rate AS tenants_tax_rate 
+FROM tenants 
+WHERE tenants.owner_email = %(owner_email_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'owner_email_1': 'josephcharrissilvera@gmail.com', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/applications.py", line 1139, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 120, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 106, in app
+    response = await f(request)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 430, in app
+    raw_response = await run_endpoint_function(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 318, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 2364, in run_sync_in_worker_thread
+    return await future
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 864, in run
+    result = context.run(func, *args)
+  File "/home/ubuntu/SaaS_MoITecH/backend/main.py", line 208, in register_tenant
+    existing = db.query(models.Tenant).filter(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+[SQL: SELECT tenants.id AS tenants_id, tenants.name AS tenants_name, tenants.owner_email AS tenants_owner_email, tenants.hashed_password AS tenants_hashed_password, tenants.advisor_phone AS tenants_advisor_phone, tenants.slug AS tenants_slug, tenants.logo_url AS tenants_logo_url, tenants.theme_color AS tenants_theme_color, tenants.business_type AS tenants_business_type, tenants.business_nit AS tenants_business_nit, tenants.business_address AS tenants_business_address, tenants.tax_rate AS tenants_tax_rate 
+FROM tenants 
+WHERE tenants.owner_email = %(owner_email_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'owner_email_1': 'josephcharrissilvera@gmail.com', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO:     181.78.4.250:0 - "POST /api/register HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/applications.py", line 1139, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 120, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 106, in app
+    response = await f(request)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 430, in app
+    raw_response = await run_endpoint_function(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/fastapi/routing.py", line 318, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 2364, in run_sync_in_worker_thread
+    return await future
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/anyio/_backends/_asyncio.py", line 864, in run
+    result = context.run(func, *args)
+  File "/home/ubuntu/SaaS_MoITecH/backend/main.py", line 208, in register_tenant
+    existing = db.query(models.Tenant).filter(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ubuntu/SaaS_MoITecH/backend/venv/lib/python3.8/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column tenants.business_nit does not exist
+LINE 1: ..., tenants.business_type AS tenants_business_type, tenants.bu...
+                                                             ^
+
+[SQL: SELECT tenants.id AS tenants_id, tenants.name AS tenants_name, tenants.owner_email AS tenants_owner_email, tenants.hashed_password AS tenants_hashed_password, tenants.advisor_phone AS tenants_advisor_phone, tenants.slug AS tenants_slug, tenants.logo_url AS tenants_logo_url, tenants.theme_color AS tenants_theme_color, tenants.business_type AS tenants_business_type, tenants.business_nit AS tenants_business_nit, tenants.business_address AS tenants_business_address, tenants.tax_rate AS tenants_tax_rate 
+FROM tenants 
+WHERE tenants.owner_email = %(owner_email_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'owner_email_1': 'josephcharrissilvera@gmail.com', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)

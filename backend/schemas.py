@@ -73,7 +73,7 @@ class ChatRequest(BaseModel):
 # AUTH
 # ─────────────────────────────────────────
 class LoginRequest(BaseModel):
-    email: str
+    email:Optional[str]=None
     password: str
     captcha_token: Optional[str] = None
 

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Store, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useAuth } from '../context/useAuth';
-import './Login.css'; 
+import './Login.css';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -31,7 +31,9 @@ const Register: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-    // Validaciones Estrictas
+    setLoading(true); // ✅ FIX: Mover aquí arriba
+
+    // Validaciones
     if (!formData.owner_email.endsWith('@gmail.com')) {
       setErrorMsg('Por favor, usa un correo de @gmail.com');
       setLoading(false);
@@ -42,6 +44,12 @@ const Register: React.FC = () => {
       setErrorMsg('El teléfono debe tener exactamente 10 dígitos numéricos');
       setLoading(false);
       return;
+    }
+
+    if (formData.password.length < 8) {
+       setErrorMsg('La contraseña debe tener al menos 8 caracteres');
+       setLoading(false);
+       return;
     }
 
     if (!formData.captcha_token) {
@@ -59,18 +67,29 @@ const Register: React.FC = () => {
       });
 
       const data = await response.json();
+      console.log('Respuesta del servidor:', data); // ✅ Para debug
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Error al registrar la tienda');
+        // ✅ FIX: Manejar múltiples formatos de error (FastAPI / Laravel / etc.)
+        let msg = 'Error al registrar la tienda';
+        if (data.detail) {
+          msg = Array.isArray(data.detail)
+            ? data.detail.map((d: any) => d.msg).join(', ')
+            : data.detail;
+        } else if (data.message) {
+          msg = data.message;
+        } else if (data.errors) {
+          msg = Object.values(data.errors).flat().join(', ');
+        }
+        throw new Error(msg);
       }
 
       setSuccessMsg(`¡Tienda creada exitosamente! Tu enlace será moihub.com/tienda/${data.slug}`);
-      
-      // Redirigir al login después de 3 segundos
+
       setTimeout(() => {
         navigate('/login');
       }, 3000);
-      
+
     } catch (error) {
       if (error instanceof Error) {
         setErrorMsg(error.message);
@@ -91,8 +110,8 @@ const Register: React.FC = () => {
       <div className="container d-flex justify-content-center align-items-center min-vh-100 position-relative z-1 py-5">
         <div className="row w-100 justify-content-center">
           <div className="col-12 col-md-8 col-lg-5">
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-center mb-4"
@@ -101,7 +120,7 @@ const Register: React.FC = () => {
               <p className="login-subtitle text-white">Crea tu tienda online inteligente en minutos.</p>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
@@ -112,13 +131,13 @@ const Register: React.FC = () => {
                   <label className="login-label">Nombre de tu Negocio</label>
                   <div className="login-input-group">
                     <Store size={18} className="input-icon" />
-                    <input 
-                      type="text" 
-                      className="login-input" 
-                      placeholder="Ej. Zapatería El Paso" 
+                    <input
+                      type="text"
+                      className="login-input"
+                      placeholder="Ej. Zapatería El Paso"
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -127,13 +146,13 @@ const Register: React.FC = () => {
                   <label className="login-label">Correo Electrónico</label>
                   <div className="login-input-group">
                     <Mail size={18} className="input-icon" />
-                    <input 
-                      type="email" 
-                      className="login-input" 
-                      placeholder="contacto@minegocio.com" 
+                    <input
+                      type="email"
+                      className="login-input"
+                      placeholder="contacto@gmail.com"
                       value={formData.owner_email}
                       onChange={(e) => setFormData({...formData, owner_email: e.target.value})}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -142,13 +161,13 @@ const Register: React.FC = () => {
                   <label className="login-label">Número de WhatsApp (Ventas)</label>
                   <div className="login-input-group">
                     <Phone size={18} className="input-icon" />
-                    <input 
-                      type="text" 
-                      className="login-input" 
-                      placeholder="Ej. 573001234567" 
+                    <input
+                      type="text"
+                      className="login-input"
+                      placeholder="Ej. 3001234567"
                       value={formData.advisor_phone}
                       onChange={(e) => setFormData({...formData, advisor_phone: e.target.value})}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -157,8 +176,8 @@ const Register: React.FC = () => {
                   <label className="login-label">Tipo de Negocio</label>
                   <div className="login-input-group">
                     <Store size={18} className="input-icon" />
-                    <select 
-                      className="login-input" 
+                    <select
+                      className="login-input"
                       style={{backgroundColor: 'transparent', border: 'none', color: '#fff'}}
                       value={formData.business_type}
                       onChange={(e) => setFormData({...formData, business_type: e.target.value})}
@@ -168,19 +187,19 @@ const Register: React.FC = () => {
                     </select>
                   </div>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="login-label">Contraseña</label>
                   <div className="login-input-group">
                     <Lock size={18} className="input-icon" />
-                    <input 
-                      type="password" 
-                      className="login-input" 
-                      placeholder="••••••••" 
+                    <input
+                      type="password"
+                      className="login-input"
+                      placeholder="••••••••"
                       value={formData.password}
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      required 
-                      minLength={6}
+                      required
+                      minLength={8}
                     />
                   </div>
                 </div>
@@ -208,10 +227,10 @@ const Register: React.FC = () => {
                   </div>
                 )}
 
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  type="submit" 
+                  type="submit"
                   disabled={loading}
                   className="login-submit-btn btn-glow-orange w-100 mb-3"
                 >
