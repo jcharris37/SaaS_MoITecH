@@ -1,73 +1,127 @@
-# React + TypeScript + Vite
+# 🚀 MoITecH (Moihub) — Plataforma SaaS Multi-tenant
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+MoITecH es una plataforma SaaS diseñada para que diversos tipos de negocios (tiendas retail, restaurantes, centros de salud, spas, centros educativos, servicios técnicos, etc.) registren su marca, obtengan una tienda virtual (Storefront) pública autogestionable y controlen sus operaciones diarias desde un panel administrativo.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🏗️ Arquitectura de la Aplicación
 
-## React Compiler
+La plataforma se compone de dos partes:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Frontend (Vite + React + TypeScript)**:
+   - Panel administrativo para gestionar productos, clientes, citas, facturación y reglas de chatbot.
+   - Vista de Storefront pública que adapta su interfaz, hero section y flujo según el tipo de negocio seleccionado.
+   - Animaciones fluidas con **Framer Motion** y gráficos dinámicos con **Recharts**.
+   - Estilizado moderno con **Bootstrap** y CSS personalizado.
 
-## Expanding the ESLint configuration
+2. **Backend (FastAPI + SQLAlchemy)**:
+   - API REST robusta que maneja autenticación JWT segura (tokens de acceso y tokens de refresco).
+   - Control de límite de peticiones (**slowapi**) para prevenir abusos en rutas críticas.
+   - Aislamiento multi-tenant a nivel de consultas a la base de datos basándose en el tenant extraído del token JWT.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## ⚙️ Configuración del Proyecto (.env)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Crea un archivo `.env` en la raíz del proyecto. Puedes tomar como guía el archivo `.env.example`:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+# JWT & Seguridad
+SECRET_KEY=tu_clave_secreta_aqui_para_firmar_los_tokens
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Base de Datos (SQLite para desarrollo local o PostgreSQL/MySQL para producción)
+DATABASE_URL=sqlite:///./backend/moitech.db
+
+# Super Admin (Credenciales globales para el administrador del SaaS)
+ADMIN_EMAIL=admin@moihub.com
+ADMIN_PASSWORD=tu_contraseña_secreta
+
+# Dirección de la API
+VITE_API_URL=http://localhost:8000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🛠️ Cómo Iniciar en Desarrollo Local
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Opción Rápida (Ambos servicios a la vez)
+Puedes levantar el backend y el frontend de forma simultánea ejecutando un único comando desde la raíz del proyecto:
+
+```bash
+# 1. Instala las dependencias del frontend
+npm install
+
+# 2. Prepara el entorno virtual del backend e instala sus requisitos
+cd backend
+python -m venv venv
+source venv/bin/activate  # En Windows usa: venv\Scripts\activate
+pip install -r requirements.txt
+cd ..
+
+# 3. Inicia ambos servidores juntos
+npm run dev:all
 ```
+> El frontend estará disponible en `http://localhost:5173` y la API del backend en `http://localhost:8000`.
+
+---
+
+### Opción Detallada (Servicios por separado)
+
+#### **Frontend**
+```bash
+npm install
+npm run dev
+```
+
+#### **Backend**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # O venv\Scripts\activate en Windows
+pip install -r requirements.txt
+python main.py
+```
+
+---
+
+## 🐳 Ejecución con Docker
+
+Si prefieres usar contenedores, el proyecto incluye un archivo `docker-compose.yml` configurado para compilar y ejecutar todo el entorno:
+
+```bash
+docker-compose up --build -d
+```
+
+- **Frontend Web:** Accesible en `http://localhost:8080`
+- **Backend API:** Accesible en `http://localhost:8000`
+
+---
+
+## 📂 Estructura del Código
+
+```text
+├── backend/
+│   ├── main.py          # Endpoints de FastAPI, CORS, limites y lógica principal.
+│   ├── models.py        # Modelos relacionales de SQLAlchemy (Tenants, Products, Appointments, Invoices...).
+│   ├── schemas.py       # Esquemas Pydantic para validación y serialización de datos.
+│   ├── database.py      # Inicialización del motor y sesión de base de datos.
+│   ├── auth.py          # Lógica de hashing de contraseñas y firma de tokens JWT.
+│   └── static/          # Directorio local para almacenamiento de logos e imágenes de productos.
+├── src/
+│   ├── components/      # Componentes visuales reutilizables (Sidebar, widgets de chat, loaders).
+│   ├── pages/           # Vistas (Dashboard, Storefront, Citas, Facturación, Clientes, Login...).
+│   ├── services/        # Cliente HTTP centralizado (Axios) para peticiones a la API.
+│   ├── App.tsx          # Enrutamiento principal de la aplicación.
+│   └── index.css        # Configuración global del diseño y variables CSS.
+```
+
+---
+
+## 💡 Funcionalidades Clave
+
+* **Storefront Inteligente:** Adapta la experiencia del usuario final al tipo de negocio. Si es de servicios (médicos, estéticos, técnicos), activa el módulo de agendamiento y reserva de citas con validación de horarios ocupados en tiempo real. Si es un comercio (retail, restaurante), activa el catálogo interactivo con carrito de compras y confirmación directa por WhatsApp.
+* **Facturación con PDF:** Generación automática de comprobantes de pago en PDF utilizando `jspdf`, calculando subtotal, IVA e importes finales.
+* **Asistente de Respuestas Automáticas:** Permite a los dueños de negocios programar palabras clave para simular respuestas automáticas (tipo bot/IVR) que guían a sus usuarios.
