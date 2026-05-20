@@ -12,8 +12,8 @@ import './Invoices.css';
 
 interface InvoiceItem {
   description: string;
-  quantity: number;
-  unit_price: number;
+  quantity: number | string;
+  unit_price: number | string;
   subtotal: number;
 }
 
@@ -67,8 +67,13 @@ const Invoices: React.FC = () => {
   const [form, setForm] = useState({ client_name: '', client_phone: '', client_email: '', notes: '' });
   const [items, setItems] = useState<InvoiceItem[]>([{ ...EMPTY_ITEM }]);
 
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [clientsList, setClientsList] = useState<any[]>([]);
+  const [showClientDrop, setShowClientDrop] = useState(false);
+  const [activeItemDrop, setActiveItemDrop] = useState<number | null>(null);
+
   const taxRate = user?.tax_rate ?? 19;
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const subtotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
@@ -77,8 +82,14 @@ const Invoices: React.FC = () => {
       // Forzamos asincronía para evitar warnings de renderizado
       await Promise.resolve();
       setLoading(true);
-      const r = await apiFetch('/api/invoices');
-      if (r.ok) setInvoices(await r.json());
+      const [rInv, rProd, rCli] = await Promise.all([
+        apiFetch('/api/invoices'),
+        apiFetch('/api/products'),
+        apiFetch('/api/clients')
+      ]);
+      if (rInv.ok) setInvoices(await rInv.json());
+      if (rProd.ok) setCatalogProducts(await rProd.json());
+      if (rCli.ok) setClientsList(await rCli.json());
     } finally { 
       setLoading(false); 
     }
@@ -96,12 +107,27 @@ const Invoices: React.FC = () => {
     if (field === 'description') {
       updated[i].description = val as string;
     } else {
-      const numVal = typeof val === 'string' ? parseFloat(val) || 0 : val;
-      if (field === 'quantity') updated[i].quantity = numVal;
-      if (field === 'unit_price') updated[i].unit_price = numVal;
+      if (field === 'quantity') updated[i].quantity = val;
+      if (field === 'unit_price') updated[i].unit_price = val;
     }
-    updated[i].subtotal = updated[i].quantity * updated[i].unit_price;
+    const qty = Number(updated[i].quantity) || 0;
+    const price = Number(updated[i].unit_price) || 0;
+    updated[i].subtotal = qty * price;
     setItems(updated);
+  };
+
+  const selectProduct = (i: number, prod: any) => {
+    const updated = [...items];
+    updated[i].description = prod.name;
+    updated[i].unit_price = prod.price || 0;
+    updated[i].subtotal = (Number(updated[i].quantity) || 0) * (prod.price || 0);
+    setItems(updated);
+    setActiveItemDrop(null);
+  };
+
+  const selectClient = (cli: any) => {
+    setForm({ ...form, client_name: cli.name, client_phone: cli.phone || '', client_email: cli.email || '' });
+    setShowClientDrop(false);
   };
 
   const resetForm = () => {
@@ -214,8 +240,8 @@ const Invoices: React.FC = () => {
       body: inv.items.map(it => [
         it.description,
         it.quantity.toString(),
-        fmt(it.unit_price),
-        fmt(it.quantity * it.unit_price)
+        fmt(Number(it.unit_price)),
+        fmt(Number(it.quantity) * Number(it.unit_price))
       ]),
       styles: { fontSize: 9, cellPadding: 4 },
       headStyles: { fillColor: [15, 15, 25], textColor: [234,88,12], fontStyle: 'bold' },
@@ -391,8 +417,8 @@ const Invoices: React.FC = () => {
                     <tr key={i}>
                       <td>{it.description}</td>
                       <td>{it.quantity}</td>
-                      <td>{fmt(it.unit_price)}</td>
-                      <td>{fmt(it.quantity*it.unit_price)}</td>
+                      <td>{fmt(Number(it.unit_price))}</td>
+                      <td>{fmt(Number(it.quantity) * Number(it.unit_price))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -429,10 +455,21 @@ const Invoices: React.FC = () => {
                 <div className="modal-section">
                   <h6 className="section-label">Datos del Cliente</h6>
                   <div className="form-grid">
-                    <div className="form-group">
+                    <div className="form-group position-relative">
                       <label>Nombre *</label>
-                      <input className="form-inp" placeholder="Nombre del cliente" value={form.client_name}
+                      <input className="form-inp" placeholder="Buscar o ingresar nombre..." value={form.client_name}
+                        onFocus={() => setShowClientDrop(true)}
+                        onBlur={() => setTimeout(() => setShowClientDrop(false), 200)}
                         onChange={e => setForm({...form, client_name: e.target.value})}/>
+                      {showClientDrop && clientsList.length > 0 && (
+                        <div className="autocomplete-dropdown position-absolute w-100 mt-1 rounded bg-dark border border-secondary shadow-lg" style={{maxHeight: '150px', overflowY: 'auto', zIndex: 1000}}>
+                          {clientsList.filter(c => c.name.toLowerCase().includes(form.client_name.toLowerCase())).map(c => (
+                            <div key={c.id} className="p-2 cursor-pointer dropdown-item-hover text-white" onClick={() => selectClient(c)}>
+                              {c.name} <small className="text-muted">{c.phone}</small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Teléfono</label>
@@ -458,16 +495,43 @@ const Invoices: React.FC = () => {
                   </div>
                   {items.map((it, i) => (
                     <div key={i} className="item-row">
-                      <input className="form-inp" placeholder="Ej. Corte clásico" value={it.description}
-                        onChange={e => updateItem(i,'description',e.target.value)}/>
-                      <input className="form-inp" type="number" min="0.1" step="0.1" value={it.quantity}
-                        onChange={e => updateItem(i,'quantity',parseFloat(e.target.value)||1)}/>
-                      <input className="form-inp" type="number" min="0" value={it.unit_price}
-                        onChange={e => updateItem(i,'unit_price',parseFloat(e.target.value)||0)}/>
-                      <span className="item-subtotal">{fmt(it.quantity*it.unit_price)}</span>
-                      {items.length > 1 && (
-                        <button className="icon-btn red" onClick={() => removeItem(i)}><Trash2 size={14}/></button>
-                      )}
+                      <div className="form-group-mobile position-relative">
+                        <label className="mobile-only-label">Descripción</label>
+                        <input className="form-inp" placeholder="Buscar servicio/producto..." value={it.description}
+                          onFocus={() => setActiveItemDrop(i)}
+                          onBlur={() => setTimeout(() => setActiveItemDrop(null), 200)}
+                          onChange={e => updateItem(i,'description',e.target.value)}/>
+                        {activeItemDrop === i && catalogProducts.length > 0 && (
+                          <div className="autocomplete-dropdown position-absolute w-100 mt-1 rounded bg-dark border border-secondary shadow-lg" style={{maxHeight: '150px', overflowY: 'auto', zIndex: 1000}}>
+                            {catalogProducts.filter(p => p.name.toLowerCase().includes(it.description.toLowerCase())).map(p => (
+                              <div key={p.id} className="p-2 cursor-pointer dropdown-item-hover text-white d-flex justify-content-between" onClick={() => selectProduct(i, p)}>
+                                <span>{p.name}</span> <span className="text-muted">{fmt(p.price)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="item-row-mobile-inputs">
+                        <div className="form-group-mobile">
+                          <label className="mobile-only-label">Cant.</label>
+                          <input className="form-inp" type="number" min="0.1" step="0.1" value={it.quantity}
+                            onChange={e => updateItem(i,'quantity',e.target.value)}/>
+                        </div>
+                        <div className="form-group-mobile">
+                          <label className="mobile-only-label">Precio Unit.</label>
+                          <input className="form-inp" type="number" min="0" value={it.unit_price}
+                            onChange={e => updateItem(i,'unit_price',e.target.value)}/>
+                        </div>
+                      </div>
+                      <div className="item-row-actions">
+                        <div>
+                          <span className="item-subtotal-label mobile-only-label me-2">Subtotal:</span>
+                          <span className="item-subtotal">{fmt(Number(it.quantity || 0) * Number(it.unit_price || 0))}</span>
+                        </div>
+                        {items.length > 1 && (
+                          <button className="icon-btn red" onClick={() => removeItem(i)}><Trash2 size={14}/></button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

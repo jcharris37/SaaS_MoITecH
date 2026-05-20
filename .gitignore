@@ -48,3 +48,6 @@ env/
 
 # ─── Archivos de sistema ───
 Thumbs.dbbackend/*.save
+
+# ─── User Uploads ───
+backend/static/uploads/

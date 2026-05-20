@@ -87,6 +87,21 @@ class Token(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 
+class PasswordResetRequest(BaseModel):
+    email: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        if not re.search(r"[A-Za-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        return v
+
 class UserInfo(BaseModel):
     id: int
     name: str

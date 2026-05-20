@@ -32,6 +32,9 @@ def run_migration(query: str):
 run_migration("ALTER TABLE tenants ADD COLUMN logo_url VARCHAR")
 run_migration("ALTER TABLE tenants ADD COLUMN theme_color VARCHAR DEFAULT '#ea580c'")
 run_migration("ALTER TABLE tenants ADD COLUMN business_type VARCHAR DEFAULT 'retail'")
+run_migration("ALTER TABLE tenants ADD COLUMN business_nit VARCHAR")
+run_migration("ALTER TABLE tenants ADD COLUMN business_address VARCHAR")
+run_migration("ALTER TABLE tenants ADD COLUMN tax_rate FLOAT DEFAULT 19.0")
 run_migration("ALTER TABLE products ADD COLUMN image_url VARCHAR")
 run_migration("ALTER TABLE products ADD COLUMN description TEXT")
 
@@ -162,6 +165,19 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
         "tenant_id": tenant.id,
         "role": "tenant"
     }
+
+@app.post("/api/reset-password")
+def reset_password(req: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    # Simulación MVP: actualizar contraseña directamente si el usuario existe
+    tenant = db.query(models.Tenant).filter(models.Tenant.owner_email == req.email).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    tenant.hashed_password = auth.get_password_hash(req.new_password)
+    db.commit()
+    
+    return {"message": "Contraseña actualizada correctamente"}
+
 @app.get("/api/me", response_model=schemas.UserInfo)
 def read_users_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
 
@@ -243,13 +259,19 @@ def register_tenant(tenant: schemas.TenantCreate, db: Session = Depends(get_db))
     db.refresh(new_tenant)
 
     # Seed default bot rule based on business type
-    default_response = "Hola. Selecciona una opción:\n1. Ver Catálogo\n2. Hablar con asesor"
-    if tenant.business_type == "appointments":
+    appointments_types = ["appointments", "health", "services"]
+    if tenant.business_type in appointments_types:
         default_response = "Hola. Selecciona una opción:\n1. Agendar Cita\n2. Hablar con asesor"
+    elif tenant.business_type == "restaurant":
+        default_response = "Hola. Selecciona una opción:\n1. Ver Menú\n2. Hablar con asesor"
+    elif tenant.business_type == "education":
+        default_response = "Hola. Selecciona una opción:\n1. Ver Cursos\n2. Hablar con asesor"
+    else:
+        default_response = "Hola. Selecciona una opción:\n1. Ver Catálogo\n2. Hablar con asesor"
     
     db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="default", response_text=default_response))
     db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="2", response_text="__REDIRECT_WHATSAPP__"))
-    if tenant.business_type == "appointments":
+    if tenant.business_type in appointments_types:
         db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="1", response_text="Puedes agendar tu cita ingresando al enlace de nuestra web."))
     else:
         db.add(models.BotRule(tenant_id=new_tenant.id, trigger_keyword="1", response_text="Visita nuestro catálogo en la web."))
@@ -402,11 +424,35 @@ def get_store_providers(slug: str, db: Session = Depends(get_db)):
         return []
     return db.query(models.ServiceProvider).filter(models.ServiceProvider.tenant_id == tenant.id).all()
 
+@app.get("/api/store/{slug}/providers/{provider_id}/busy-times")
+def get_busy_times(slug: str, provider_id: int, date: str, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    
+    appointments = db.query(models.Appointment).filter(
+        models.Appointment.tenant_id == tenant.id,
+        models.Appointment.provider_id == provider_id,
+        models.Appointment.date == date
+    ).all()
+    
+    return [appt.time for appt in appointments]
+
 @app.post("/api/store/{slug}/appointments", response_model=schemas.AppointmentOut)
 def book_appointment(slug: str, appt: schemas.AppointmentCreate, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Negocio no encontrado")
+        
+    # Evitar doble agenda
+    existing = db.query(models.Appointment).filter(
+        models.Appointment.tenant_id == tenant.id,
+        models.Appointment.provider_id == appt.provider_id,
+        models.Appointment.date == appt.date,
+        models.Appointment.time == appt.time
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Esta hora ya está ocupada por otra reserva.")
         
     new_appt = models.Appointment(
         tenant_id=tenant.id,
@@ -445,6 +491,30 @@ def create_product(product: schemas.ProductCreate, user=Depends(get_current_user
     db.commit()
     db.refresh(new_product)
     return new_product
+
+@app.put("/api/products/{product_id}", response_model=schemas.ProductOut)
+def update_product(product_id: int, product: schemas.ProductCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+
+    prod = db.query(models.Product).filter(
+        models.Product.id == product_id,
+        models.Product.tenant_id == tenant_id
+    ).first()
+
+    if not prod:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    prod.name = product.name
+    prod.price = product.price
+    prod.stock = product.stock
+    prod.category = product.category
+    prod.description = product.description
+    if product.image_url is not None:
+        prod.image_url = product.image_url
+
+    db.commit()
+    db.refresh(prod)
+    return prod
 
 @app.delete("/api/products/{product_id}")
 def delete_product(product_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
@@ -518,15 +588,40 @@ def get_stats(user=Depends(get_current_user), db: Session = Depends(get_db)):
     prods = db.query(models.Product).filter(models.Product.tenant_id == tenant_id).count()
     clients = db.query(models.Client).filter(models.Client.tenant_id == tenant_id).count()
 
+    paid_count = db.query(models.Invoice).filter(
+        models.Invoice.tenant_id == tenant_id,
+        models.Invoice.status == "Pagada"
+    ).count()
+    pending_count = db.query(models.Invoice).filter(
+        models.Invoice.tenant_id == tenant_id,
+        models.Invoice.status == "Pendiente"
+    ).count()
+    
+    total_sales = db.query(sqlalchemy.func.sum(models.Invoice.total)).filter(
+        models.Invoice.tenant_id == tenant_id,
+        models.Invoice.status == "Pagada"
+    ).scalar() or 0.0
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    total_appts = db.query(models.Appointment).filter(
+        models.Appointment.tenant_id == tenant_id,
+        models.Appointment.date == today_str
+    ).count()
+    completed_appts = db.query(models.Appointment).filter(
+        models.Appointment.tenant_id == tenant_id,
+        models.Appointment.date == today_str,
+        models.Appointment.status == "Completada"
+    ).count()
+
     return schemas.DashboardStats(
-        total_sales=0,
+        total_sales=total_sales,
         active_clients=clients,
         total_products=prods,
         total_messages=0,
-        paid_invoices=0,
-        pending_invoices=0,
-        total_appointments_today=0,
-        completed_appointments_today=0
+        paid_invoices=paid_count,
+        pending_invoices=pending_count,
+        total_appointments_today=total_appts,
+        completed_appointments_today=completed_appts
     )
 
 # ==========================================
@@ -595,23 +690,42 @@ def get_invoices(user=Depends(get_current_user), db: Session = Depends(get_db)):
 @app.post("/api/invoices", response_model=schemas.InvoiceOut)
 def create_invoice(data: schemas.InvoiceCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
+    
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    tax_rate = tenant.tax_rate if (tenant and tenant.tax_rate is not None) else 19.0
+    
+    subtotal = sum(i.quantity * i.unit_price for i in data.items)
+    tax_amount = subtotal * (tax_rate / 100.0)
+    total = subtotal + tax_amount
+    
     count = db.query(models.Invoice).filter(models.Invoice.tenant_id == tenant_id).count()
     invoice = models.Invoice(
         tenant_id=tenant_id,
         invoice_number=f"FAC-{count+1:04d}",
         client_name=data.client_name,
         client_phone=data.client_phone,
-        status=data.status,
-        total=sum(i.quantity * i.unit_price for i in data.items)
+        client_email=data.client_email,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        total=total,
+        status="Pendiente",
+        notes=data.notes
     )
     db.add(invoice)
     db.flush()
     for item in data.items:
-        db.add(models.InvoiceItem(invoice_id=invoice.id, **item.dict()))
+        db.add(models.InvoiceItem(
+            invoice_id=invoice.id,
+            description=item.description,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            subtotal=item.quantity * item.unit_price
+        ))
     db.commit()
     db.refresh(invoice)
     return invoice
 
+@app.put("/api/invoices/{invoice_id}/status")
 @app.patch("/api/invoices/{invoice_id}/status")
 def update_invoice_status(invoice_id: int, data: schemas.InvoiceStatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)

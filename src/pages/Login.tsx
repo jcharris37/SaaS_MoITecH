@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, Building, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Building, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useAuth } from '../context/useAuth';
 import { apiFetch, saveTokens } from '../services/api';
@@ -12,6 +12,7 @@ import './Login.css';
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'tenant' | 'superadmin'>('tenant');
   const [captchaToken, setCaptchaToken] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -39,7 +40,11 @@ const Login: React.FC = () => {
     try {
       const response = await apiFetch('/api/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, captcha_token: captchaToken })
+        body: JSON.stringify({ 
+          email: role === 'superadmin' ? '' : email, 
+          password, 
+          captcha_token: role === 'superadmin' ? '' : captchaToken 
+        })
       });
 
       if (!response.ok) {
@@ -135,20 +140,22 @@ const Login: React.FC = () => {
               </div>
 
               <form onSubmit={handleLogin}>
-                <div className="mb-4">
-                  <label className="login-label">Correo Electrónico</label>
-                  <div className="login-input-group">
-                    <Mail size={18} className="input-icon" />
-                    <input
-                      type="email"
-                      className="login-input"
-                      placeholder="correo@ejemplo.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required={role ==='tenant'}
-                    />
+                {role === 'tenant' && (
+                  <div className="mb-4">
+                    <label className="login-label">Correo Electrónico</label>
+                    <div className="login-input-group">
+                      <Mail size={18} className="input-icon" />
+                      <input
+                        type="email"
+                        className="login-input"
+                        placeholder="correo@ejemplo.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {role === 'tenant' && (
                   <div className="mb-4 d-flex justify-content-center" style={{minHeight: '80px'}}>
@@ -163,22 +170,39 @@ const Login: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mb-4">
+                <div className="mb-2">
                   <label className="login-label">
                     {role === 'superadmin' ? 'Contraseña Admin' : 'Contraseña'}
                   </label>
-                  <div className="login-input-group">
+                  <div className="login-input-group position-relative">
                     <Lock size={18} className="input-icon" />
                     <input
-                      type="password"
-                      className="login-input"
+                      type={showPassword ? 'text' : 'password'}
+                      className="login-input pe-5"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      required={role === 'tenant'}
+                      required
                     />
+                    <button 
+                      type="button" 
+                      className="btn position-absolute end-0 top-50 translate-middle-y border-0 text-muted p-2" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                      style={{ background: 'transparent' }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
+
+                {role === 'tenant' && (
+                  <div className="text-end mb-4">
+                    <Link to="/reset-password" className="text-muted small text-decoration-none hover-text-accent">
+                      ¿Olvidaste tu contraseña?
+                    </Link>
+                  </div>
+                )}
 
                 {errorMsg && (
                   <div

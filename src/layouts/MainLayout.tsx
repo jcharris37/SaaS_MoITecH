@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Palette, LogOut } from 'lucide-react';
+import { Palette, LogOut, Menu } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { useTheme } from '../context/useTheme';
 import { useAuth } from '../context/useAuth';
@@ -9,6 +9,7 @@ const MainLayout: React.FC = () => {
   const { setAccentColor } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'US';
 
@@ -24,12 +25,27 @@ const MainLayout: React.FC = () => {
       <div className="glow-orb orb-2"></div>
       <div className="glow-orb orb-3"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      {sidebarOpen && (
+        <div className="sidebar-backdrop d-lg-none" onClick={() => setSidebarOpen(false)}></div>
+      )}
+
       <main className="main-content position-relative z-1">
         <header className="header glass-panel d-flex justify-content-between align-items-center p-3 rounded mb-4" style={{ border: '1px solid var(--border-color)' }}>
-          <div>
-            <h5 className="text-white mb-0 fw-bold">{user?.name || 'Panel de Control'}</h5>
-            <p className="text-muted mb-0" style={{ fontSize: '0.78rem' }}>Bienvenido de vuelta, gestiona tu negocio.</p>
+          <div className="d-flex align-items-center">
+            <button
+              className="btn btn-sm d-lg-none me-3 p-2 d-flex align-items-center"
+              onClick={() => setSidebarOpen(true)}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white' }}
+              title="Abrir menú"
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <h5 className="text-white mb-0 fw-bold">{user?.name || 'Panel de Control'}</h5>
+              <p className="text-muted mb-0" style={{ fontSize: '0.78rem' }}>Bienvenido de vuelta, gestiona tu negocio.</p>
+            </div>
           </div>
           <div className="d-flex align-items-center gap-3">
             {/* Selector de Tema */}

@@ -10,11 +10,13 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Products from './pages/Products';
+import Appointments from './pages/Appointments';
 import AIChat from './pages/AIChat';
+import Invoices from './pages/Invoices';
 import Admin from './pages/Admin';
 import Storefront from './pages/Storefront';
 import Register from './pages/Register';
-import Appointments from './pages/Appointments';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
             {/* 🔓 PÚBLICAS */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* 🔐 TENANT */}
             <Route
@@ -44,6 +47,7 @@ function App() {
               <Route path="clients" element={<Clients />} />
               <Route path="products" element={<Products />} />
               <Route path="appointments" element={<Appointments />} />
+              <Route path="invoices" element={<Invoices />} />
               <Route path="chat" element={<AIChat />} />
             </Route>
 
