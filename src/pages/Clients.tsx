@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, X, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
 import { apiFetch } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface ClientData {
   id?: number;
@@ -18,14 +18,15 @@ const Clients: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', total_orders: '0', status: 'Activo' });
+  const { showToast } = useToast();
 
   const fetchClients = async () => {
     try {
       const response = await apiFetch(`/api/clients`);
       const data = await response.json();
       setClients(data);
-    } catch {
-      console.error("Error cargando clientes:");
+    } catch (err: any) {
+      showToast(err.message || "Error al cargar clientes", "error");
     } finally {
       setLoading(false);
     }
@@ -41,7 +42,7 @@ const Clients: React.FC = () => {
     if (!formData.name || !formData.phone) return;
 
     try {
-      const response = await apiFetch(`/api/clients`, {
+      await apiFetch(`/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -52,22 +53,22 @@ const Clients: React.FC = () => {
         })
       });
 
-      if (response.ok) {
-        setFormData({ name: '', phone: '', total_orders: '0', status: 'Activo' });
-        setShowForm(false);
-        fetchClients();
-      }
-    } catch {
-      alert("Error al guardar cliente");
+      setFormData({ name: '', phone: '', total_orders: '0', status: 'Activo' });
+      setShowForm(false);
+      showToast('Cliente registrado con éxito', 'success');
+      fetchClients();
+    } catch (err: any) {
+      showToast(err.message || 'Error al guardar cliente', 'error');
     }
   };
 
   const deleteClient = async (id: number) => {
     try {
       await apiFetch(`/api/clients/${id}`, { method: 'DELETE' });
+      showToast('Cliente eliminado', 'success');
       fetchClients();
-    } catch {
-      console.error("Error eliminando cliente");
+    } catch (err: any) {
+      showToast(err.message || "Error al eliminar cliente", "error");
     }
   };
 

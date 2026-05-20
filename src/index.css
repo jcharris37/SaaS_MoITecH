@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+
 :root {
   --primary-color: #ffffff;
   --secondary-color: #0f172a;
@@ -9,12 +11,21 @@
   --border-radius: 20px;
   --sidebar-width: 260px;
   --border-color: rgba(255, 255, 255, 0.08);
+  
+  --font-title: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 body {
   transition: background-color 0.4s ease, color 0.4s ease;
   background-color: var(--bg-color);
   color: var(--text-main);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, h5, h6, .dash-title, .hero-title, .modal-product-name {
+  font-family: var(--font-title);
+  letter-spacing: -0.02em;
 }
 
 /* Base Neon Background */
@@ -226,4 +237,109 @@ body {
 
 .table tr:last-child td {
   border-bottom: none !important;
+}
+
+/* Glassmorphic Toast Notifications */
+.toast-container-custom {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 380px;
+  width: calc(100% - 48px);
+}
+
+@media (max-width: 576px) {
+  .toast-container-custom {
+    top: 16px;
+    right: 24px;
+    left: 24px;
+    max-width: none;
+    width: auto;
+  }
+}
+
+.toast-item-custom {
+  pointer-events: auto;
+  background: rgba(15, 15, 25, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.toast-item-custom::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.toast-item-custom.success::before {
+  background: #10b981;
+}
+
+.toast-item-custom.error::before {
+  background: #ef4444;
+}
+
+.toast-item-custom.info::before {
+  background: #3b82f6;
+}
+
+.toast-item-custom.warning::before {
+  background: #f59e0b;
+}
+
+.toast-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast-icon-wrapper.success { color: #10b981; }
+.toast-icon-wrapper.error { color: #ef4444; }
+.toast-icon-wrapper.info { color: #3b82f6; }
+.toast-icon-wrapper.warning { color: #f59e0b; }
+
+.toast-message {
+  flex-grow: 1;
+  line-height: 1.4;
+}
+
+.toast-close-btn-custom {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  border-radius: 50%;
+}
+
+.toast-close-btn-custom:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
 }

@@ -64,10 +64,25 @@ class DashboardStats(BaseModel):
     completed_appointments_today: int
 
 # ─────────────────────────────────────────
-# CHAT
+# CHAT & CHECKOUT
 # ─────────────────────────────────────────
 class ChatRequest(BaseModel):
     message: str
+
+class CheckoutItem(BaseModel):
+    product_id: int
+    quantity: int
+
+class CheckoutRequest(BaseModel):
+    client_name: str
+    client_phone: str
+    client_address: Optional[str] = None
+    notes: Optional[str] = None
+    items: List[CheckoutItem]
+
+class CheckoutResponse(BaseModel):
+    message: str
+    whatsapp_url: str
 
 # ─────────────────────────────────────────
 # AUTH
@@ -232,6 +247,9 @@ class InvoiceOut(BaseModel):
 
 class InvoiceStatusUpdate(BaseModel):
     status: str  
+
+class AppointmentStatusUpdate(BaseModel):
+    status: str
 
 class InvoiceStats(BaseModel):
     total_this_month: float

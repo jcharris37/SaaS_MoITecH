@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { User, Calendar as CalendarIcon, Clock, X, Plus, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +34,7 @@ export default function Appointments() {
   const [showModal, setShowModal] = useState(false);
   const [newProvider, setNewProvider] = useState({ name: '', profile_image: '' });
   const [uploading, setUploading] = useState(false);
+  const { showToast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -43,10 +45,6 @@ export default function Appointments() {
         apiFetch('/api/appointments')
       ]);
 
-      if (!provRes.ok || !apptRes.ok) {
-        throw new Error('Error cargando datos');
-      }
-
       const provs: Provider[] = await provRes.json();
       const appts: Appointment[] = await apptRes.json();
 
@@ -54,8 +52,8 @@ export default function Appointments() {
       setAppointments(appts);
       setVisibleProviders(provs.map((p) => p.id));
 
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      showToast(e.message || "Error al cargar datos", "error");
 
     } finally {
       setLoading(false);
@@ -102,7 +100,7 @@ export default function Appointments() {
 
     } catch (error) {
       console.error(error);
-      alert('Error subiendo imagen');
+      showToast('Error subiendo imagen de perfil', 'error');
 
     } finally {
       setUploading(false);
@@ -115,7 +113,7 @@ export default function Appointments() {
     if (!newProvider.name.trim()) return;
 
     try {
-      const response = await apiFetch('/api/providers', {
+      await apiFetch('/api/providers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -123,21 +121,18 @@ export default function Appointments() {
         body: JSON.stringify(newProvider)
       });
 
-      if (!response.ok) {
-        throw new Error('Error creando profesional');
-      }
-
       setNewProvider({
         name: '',
         profile_image: ''
       });
 
       setShowModal(false);
+      showToast('Profesional creado', 'success');
 
       await fetchData();
 
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      showToast(error.message || 'Error al crear profesional', 'error');
     }
   };
 

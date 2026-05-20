@@ -4,6 +4,11 @@ import shutil
 import sqlalchemy
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import urllib.parse
+import logging
 from sqlalchemy.orm import Session
 from database import engine, Base, get_db
 import models
@@ -37,10 +42,25 @@ run_migration("ALTER TABLE tenants ADD COLUMN business_address VARCHAR")
 run_migration("ALTER TABLE tenants ADD COLUMN tax_rate FLOAT DEFAULT 19.0")
 run_migration("ALTER TABLE products ADD COLUMN image_url VARCHAR")
 run_migration("ALTER TABLE products ADD COLUMN description TEXT")
+run_migration("UPDATE products SET category = TRIM(category)")
 
 os.makedirs("static/uploads", exist_ok=True)
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Moihub Storefront & Admin API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from fastapi.responses import JSONResponse
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Error no manejado: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Ocurrió un error interno en el servidor. Por favor, inténtalo más tarde."},
+    )
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
@@ -103,7 +123,8 @@ def require_admin(user=Depends(get_current_user)):
 # 🔑 AUTH
 # ==========================================
 @app.post("/api/login", response_model=schemas.Token)
-def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(req: schemas.LoginRequest, request: Request, db: Session = Depends(get_db)):
     is_admin = req.password == os.getenv("ADMIN_PASSWORD") and req.email in [os.getenv("ADMIN_EMAIL"), ""]
     if not is_admin and not req.captcha_token:
         raise HTTPException(status_code=400, detail="Por favor, completa el captcha")
@@ -167,7 +188,8 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/reset-password")
-def reset_password(req: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def reset_password(req: schemas.PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
     # Simulación MVP: actualizar contraseña directamente si el usuario existe
     tenant = db.query(models.Tenant).filter(models.Tenant.owner_email == req.email).first()
     if not tenant:
@@ -219,7 +241,8 @@ def generate_slug(name: str) -> str:
     return slug
 
 @app.post("/api/register")
-def register_tenant(tenant: schemas.TenantCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register_tenant(tenant: schemas.TenantCreate, request: Request, db: Session = Depends(get_db)):
 
     existing = db.query(models.Tenant).filter(
         models.Tenant.owner_email == tenant.owner_email
@@ -314,13 +337,82 @@ def get_store_info(slug: str, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
+        
+    bt = tenant.business_type or "retail"
+    
+    ui_layout = {
+        "has_cart": bt not in ['appointments', 'health', 'services'],
+        "has_appointments": bt in ['appointments', 'health', 'services'],
+        "has_categories": bt in ['restaurant', 'retail', 'other'],
+        "is_gym": bt == 'gym',
+        "is_education": bt == 'education',
+        "is_restaurant": bt == 'restaurant',
+        "hero_badge": f"Oficial de {tenant.name}",
+        "hero_title": "Catálogo Exclusivo",
+        "hero_subtitle": "Explora nuestra colección seleccionada de productos de alta calidad.",
+        "provider_label": "Estilista Certificado",
+        "patient_label": "Nombre Completo",
+        "button_label": "Confirmar Reserva"
+    }
+
+    if bt == 'appointments':
+        ui_layout.update({
+            "hero_badge": f"Estética & Spa - {tenant.name}",
+            "hero_title": "Reserva tu Experiencia",
+            "hero_subtitle": "Agenda tu cita con los mejores estilistas y profesionales en pocos clics.",
+            "provider_label": "Estilista Certificado",
+            "patient_label": "Nombre Completo",
+        })
+    elif bt == 'health':
+        ui_layout.update({
+            "hero_badge": f"Portal Médico - {tenant.name}",
+            "hero_title": "Agenda tu Consulta Médica",
+            "hero_subtitle": "Agenda tu teleconsulta o cita presencial con profesionales de la salud certificados.",
+            "provider_label": "Especialista Médico",
+            "patient_label": "Nombre Completo del Paciente",
+            "button_label": "Confirmar Consulta Médica"
+        })
+    elif bt == 'services':
+        ui_layout.update({
+            "hero_badge": f"Servicios Profesionales - {tenant.name}",
+            "hero_title": "Solicitud de Visita Técnica",
+            "hero_subtitle": "Agenda una visita a domicilio de nuestros técnicos especialistas.",
+            "provider_label": "Técnico Especialista",
+            "button_label": "Confirmar Visita Técnica"
+        })
+    elif bt == 'restaurant':
+        ui_layout.update({
+            "hero_badge": f"Menú Gastronómico - {tenant.name}",
+            "hero_title": "Menú Digital & Comandas",
+            "hero_subtitle": "Explora nuestras deliciosas preparaciones y ordena directo a tu mesa o domicilio.",
+        })
+    elif bt == 'gym':
+        ui_layout.update({
+            "hero_badge": f"Centro Fitness - {tenant.name}",
+            "hero_title": "Planes de Entrenamiento & Membresías",
+            "hero_subtitle": "Elige el plan ideal y obtén acceso ilimitado a nuestras zonas de entrenamiento.",
+        })
+    elif bt == 'education':
+        ui_layout.update({
+            "hero_badge": f"Centro Educativo - {tenant.name}",
+            "hero_title": "Formación Profesional & Cursos",
+            "hero_subtitle": "Capacítate con instructores expertos en cursos y diplomados acreditados.",
+        })
+    elif bt == 'other':
+        ui_layout.update({
+            "hero_badge": f"Portal Corporativo - {tenant.name}",
+            "hero_title": "Portafolio de Productos & Servicios",
+            "hero_subtitle": "Encuentra soluciones y cotiza de manera personalizada en pocos clics.",
+        })
+        
     return {
         "name": tenant.name,
         "slug": tenant.slug,
         "logo_url": tenant.logo_url,
         "theme_color": tenant.theme_color,
         "business_type": tenant.business_type,
-        "advisor_phone": tenant.advisor_phone
+        "advisor_phone": tenant.advisor_phone,
+        "ui_layout": ui_layout
     }
 
 @app.get("/api/store/{slug}/products", response_model=List[schemas.ProductOut])
@@ -330,8 +422,59 @@ def get_store_products(slug: str, db: Session = Depends(get_db)):
         return []
     return tenant.products
 
+@app.post("/api/store/{slug}/checkout", response_model=schemas.CheckoutResponse)
+@limiter.limit("10/minute")
+def store_checkout(slug: str, req: schemas.CheckoutRequest, request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tienda no encontrada")
+            
+        store_name = tenant.name or 'la tienda'
+        
+        message = f"🛒 *NUEVO PEDIDO CONSOLIDADO*\n"
+        message += f"🏬 *Tienda:* {store_name}\n\n"
+        message += f"👤 *Cliente:* {req.client_name}\n"
+        message += f"📞 *Teléfono:* {req.client_phone}\n"
+        if req.client_address:
+            message += f"📍 *Dirección de Entrega:* {req.client_address}\n"
+        if req.notes:
+            message += f"📝 *Notas:* {req.notes}\n"
+        message += f"\n📦 *Productos:* \n"
+        
+        total = 0
+        for item in req.items:
+            product = db.query(models.Product).filter(
+                models.Product.id == item.product_id,
+                models.Product.tenant_id == tenant.id
+            ).first()
+            if not product:
+                raise HTTPException(status_code=400, detail=f"Producto ID {item.product_id} no encontrado")
+            
+            subtotal = product.price * item.quantity
+            total += subtotal
+            fmt_price = "${:,.0f}".format(product.price).replace(",", ".")
+            fmt_subtotal = "${:,.0f}".format(subtotal).replace(",", ".")
+            message += f"• {item.quantity}x {product.name} - {fmt_price} (Subtotal: {fmt_subtotal})\n"
+            
+        fmt_total = "${:,.0f}".format(total).replace(",", ".")
+        message += f"\n💵 *Total del Pedido:* {fmt_total}\n\n"
+        message += f"¡Muchas gracias! Quedo a la espera de la confirmación."
+
+        text = urllib.parse.quote(message)
+        phone = tenant.advisor_phone or '573000000000'
+        whatsapp_url = f"https://wa.me/{phone}?text={text}"
+        
+        return {"message": "Pedido procesado", "whatsapp_url": whatsapp_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Checkout error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al procesar el pedido")
+
 @app.post("/api/store/{slug}/chat")
-def store_chat(slug: str, req: schemas.ChatRequest, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def store_chat(slug: str, req: schemas.ChatRequest, request: Request, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
@@ -416,6 +559,20 @@ def get_appointments(user=Depends(get_current_user), db: Session = Depends(get_d
     tenant_id = get_tenant_id(user)
     return db.query(models.Appointment).filter(models.Appointment.tenant_id == tenant_id).all()
 
+@app.put("/api/appointments/{appointment_id}/status")
+@app.patch("/api/appointments/{appointment_id}/status")
+def update_appointment_status(appointment_id: int, data: schemas.AppointmentStatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    appt = db.query(models.Appointment).filter(
+        models.Appointment.id == appointment_id,
+        models.Appointment.tenant_id == tenant_id
+    ).first()
+    if not appt:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    appt.status = data.status
+    db.commit()
+    return {"status": "ok"}
+
 # PUBLIC ENDPOINTS FOR APPOINTMENTS (used by Storefront)
 @app.get("/api/store/{slug}/providers", response_model=List[schemas.ServiceProviderOut])
 def get_store_providers(slug: str, db: Session = Depends(get_db)):
@@ -482,7 +639,7 @@ def create_product(product: schemas.ProductCreate, user=Depends(get_current_user
         name=product.name,
         price=product.price,
         stock=product.stock,
-        category=product.category,
+        category=product.category.strip() if product.category else "General",
         image_url=product.image_url,
         description=product.description
     )
@@ -507,7 +664,7 @@ def update_product(product_id: int, product: schemas.ProductCreate, user=Depends
     prod.name = product.name
     prod.price = product.price
     prod.stock = product.stock
-    prod.category = product.category
+    prod.category = product.category.strip() if product.category else "General"
     prod.description = product.description
     if product.image_url is not None:
         prod.image_url = product.image_url
@@ -537,6 +694,34 @@ def delete_product(product_id: int, user=Depends(get_current_user), db: Session 
 def get_clients(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
     return db.query(models.Client).filter(models.Client.tenant_id == tenant_id).all()
+
+@app.post("/api/clients", response_model=schemas.ClientOut)
+def create_client(client: schemas.ClientCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    new_client = models.Client(
+        tenant_id=tenant_id,
+        name=client.name,
+        phone=client.phone,
+        total_orders=client.total_orders,
+        status=client.status
+    )
+    db.add(new_client)
+    db.commit()
+    db.refresh(new_client)
+    return new_client
+
+@app.delete("/api/clients/{client_id}")
+def delete_client(client_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = get_tenant_id(user)
+    client = db.query(models.Client).filter(
+        models.Client.id == client_id,
+        models.Client.tenant_id == tenant_id
+    ).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    db.delete(client)
+    db.commit()
+    return {"status": "ok"}
 
 # REGLAS DEL BOT (IVR)
 @app.get("/api/rules", response_model=List[schemas.BotRuleOut])

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Save, MessageSquare, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
-
 import { apiFetch } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface BotRule {
   id: number;
@@ -17,6 +17,7 @@ const AIChat: React.FC = () => {
   const [newResponse, setNewResponse] = useState('');
   const [isRedirect, setIsRedirect] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   const fetchRules = async () => {
     try {
@@ -55,7 +56,7 @@ const AIChat: React.FC = () => {
         fetchRules();
       }
     } catch {
-      alert("Error guardando la regla");
+      showToast('Error guardando la regla del bot', 'error');
     }
   };
 

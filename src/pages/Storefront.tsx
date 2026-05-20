@@ -5,10 +5,12 @@ import {
   MessageCircle, ShoppingCart, Calendar, Clock, MapPin, 
   Phone, PackageSearch, X, Bot,
   Mail, ArrowRight, Star, ShieldCheck, Users, Camera, Globe,
-  UtensilsCrossed, Dumbbell, GraduationCap, Award
+  UtensilsCrossed, Dumbbell, GraduationCap, Award,
+  Plus, Minus, Trash2
 } from 'lucide-react';
 import { API_URL } from '../services/api';
 import StoreChatWidget from '../components/StoreChatWidget';
+import { useToast } from '../context/ToastContext';
 import './Storefront.css';
 
 interface Product {
@@ -36,6 +38,20 @@ interface StoreInfo {
   business_type?: string;
   advisor_phone?: string;
   business_address?: string;
+  ui_layout: {
+    has_cart: boolean;
+    has_appointments: boolean;
+    has_categories: boolean;
+    is_gym: boolean;
+    is_education: boolean;
+    is_restaurant: boolean;
+    hero_badge: string;
+    hero_title: string;
+    hero_subtitle: string;
+    provider_label: string;
+    patient_label: string;
+    button_label: string;
+  };
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
@@ -46,6 +62,11 @@ export default function Storefront() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
   
+  const { showToast } = useToast();
+  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({ name: '', phone: '', address: '', notes: '' });
+
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -55,6 +76,100 @@ export default function Storefront() {
   const [fetchingBusy, setFetchingBusy] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const addToCart = (product: Product) => {
+    if (product.stock === 0) {
+      showToast('Este producto no tiene stock disponible', 'error');
+      return;
+    }
+    setCart((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id);
+      if (existing) {
+        if (existing.quantity >= product.stock) {
+          showToast(`No puedes agregar más unidades de ${product.name} (límite de stock alcanzado)`, 'warning');
+          return prev;
+        }
+        showToast(`${product.name} agregado al carrito`, 'success');
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      showToast(`${product.name} agregado al carrito`, 'success');
+      return [...prev, { product, quantity: 1 }];
+    });
+  };
+
+  const removeFromCart = (productId: number) => {
+    setCart((prev) => {
+      const target = prev.find((item) => item.product.id === productId);
+      if (target) {
+        showToast(`${target.product.name} eliminado del carrito`, 'info');
+      }
+      return prev.filter((item) => item.product.id !== productId);
+    });
+  };
+
+  const updateQuantity = (productId: number, delta: number) => {
+    setCart((prev) => {
+      return prev.map((item) => {
+        if (item.product.id === productId) {
+          const newQty = item.quantity + delta;
+          if (newQty < 1) return item;
+          if (newQty > item.product.stock) {
+            showToast(`Límite de stock alcanzado para ${item.product.name}`, 'warning');
+            return item;
+          }
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      });
+    });
+  };
+
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cart.length === 0) {
+      showToast('Tu carrito está vacío', 'error');
+      return;
+    }
+    if (!checkoutForm.name || !checkoutForm.phone) {
+      showToast('Por favor, completa los campos requeridos', 'warning');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/store/${slug}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_name: checkoutForm.name,
+          client_phone: checkoutForm.phone,
+          client_address: checkoutForm.address,
+          notes: checkoutForm.notes,
+          items: cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }))
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        showToast(errorData.detail || 'Error al procesar el pedido', 'error');
+        return;
+      }
+
+      const data = await response.json();
+      window.open(data.whatsapp_url, '_blank');
+      
+      setCart([]);
+      setIsCartOpen(false);
+      setCheckoutForm({ name: '', phone: '', address: '', notes: '' });
+      showToast('Pedido procesado correctamente', 'success');
+    } catch (error) {
+      console.error('Checkout error:', error);
+      showToast('Ocurrió un error al conectar con el servidor', 'error');
+    }
+  };
 
   useEffect(() => {
     const fetchBusyTimes = async () => {
@@ -125,31 +240,17 @@ export default function Storefront() {
         body: JSON.stringify({ ...apptForm, provider_id: selectedProvider.id })
       });
       if (response.ok) {
-        alert('Reserva agendada exitosamente. Te esperamos.');
+        showToast('Reserva agendada exitosamente. Te esperamos.', 'success');
         setApptForm({ client_name: '', client_phone: '', date: '', time: '', service_name: '' });
         setSelectedProvider(null);
+      } else {
+        showToast('Error al agendar la cita. Inténtalo de nuevo.', 'error');
       }
     } catch {
-      alert('Error agendando cita');
+      showToast('Error de conexión al agendar la cita.', 'error');
     }
   };
 
-  const handleBuyWhatsApp = (productName: string, actionType: string = 'comprar') => {
-    let customText = '';
-    const storeName = storeInfo?.name || 'la tienda';
-    if (actionType === 'ordenar') {
-      customText = `Hola, quisiera pedir de tu menú digital: ${productName}. Vi esto en tu portal online de ${storeName}.`;
-    } else if (actionType === 'inscribir_plan') {
-      customText = `Hola, me interesa inscribirme al plan: ${productName}. Vi esto en tu portal de ${storeName}.`;
-    } else if (actionType === 'matricular_curso') {
-      customText = `Hola, me interesa matricularme en el curso: ${productName}. Vi esto en tu portal educativo de ${storeName}.`;
-    } else {
-      customText = `Hola, quisiera comprar: ${productName}. Vi esto en tu catálogo online de ${storeName}.`;
-    }
-    const text = encodeURIComponent(customText);
-    const phone = storeInfo?.advisor_phone || '573000000000';
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
-  };
 
   if (loading) {
     return (
@@ -173,45 +274,29 @@ export default function Storefront() {
   // ────────────────────────────────────────────────────────
   // DYNAMIC HEADER DETAILS
   // ────────────────────────────────────────────────────────
-  let heroBadge = `Oficial de ${storeInfo.name}`;
-  let heroTitle = "Catálogo Exclusivo";
-  let heroSubtitle = "Explora nuestra colección seleccionada de productos de alta calidad.";
+  const { ui_layout } = storeInfo;
+  const heroBadge = ui_layout?.hero_badge || `Oficial de ${storeInfo.name}`;
+  const heroTitle = ui_layout?.hero_title || "Catálogo Exclusivo";
+  const heroSubtitle = ui_layout?.hero_subtitle || "Explora nuestra colección seleccionada de productos de alta calidad.";
 
-  if (bt === 'appointments') {
-    heroBadge = `Estética & Spa - ${storeInfo.name}`;
-    heroTitle = "Reserva tu Experiencia";
-    heroSubtitle = "Agenda tu cita con los mejores estilistas y profesionales en pocos clics.";
-  } else if (bt === 'health') {
-    heroBadge = `Portal Médico - ${storeInfo.name}`;
-    heroTitle = "Agenda tu Consulta Médica";
-    heroSubtitle = "Agenda tu teleconsulta o cita presencial con profesionales de la salud certificados.";
-  } else if (bt === 'services') {
-    heroBadge = `Servicios Profesionales - ${storeInfo.name}`;
-    heroTitle = "Solicitud de Visita Técnica";
-    heroSubtitle = "Agenda una visita a domicilio de nuestros técnicos especialistas.";
-  } else if (bt === 'restaurant') {
-    heroBadge = `Menú Gastronómico - ${storeInfo.name}`;
-    heroTitle = "Menú Digital & Comandas";
-    heroSubtitle = "Explora nuestras deliciosas preparaciones y ordena directo a tu mesa o domicilio.";
-  } else if (bt === 'gym') {
-    heroBadge = `Centro Fitness - ${storeInfo.name}`;
-    heroTitle = "Planes de Entrenamiento & Membresías";
-    heroSubtitle = "Elige el plan ideal y obtén acceso ilimitado a nuestras zonas de entrenamiento.";
-  } else if (bt === 'education') {
-    heroBadge = `Centro Educativo - ${storeInfo.name}`;
-    heroTitle = "Formación Profesional & Cursos";
-    heroSubtitle = "Capacítate con instructores expertos en cursos y diplomados acreditados.";
-  } else if (bt === 'other') {
-    heroBadge = `Portal Corporativo - ${storeInfo.name}`;
-    heroTitle = "Portafolio de Productos & Servicios";
-    heroSubtitle = "Encuentra soluciones y cotiza de manera personalizada en pocos clics.";
-  }
+  // Categories helper for Restaurants and Retail (grouped case-insensitively and trimmed)
+  const categoryMap = new Map<string, string>();
+  products.forEach(p => {
+    const rawCat = (p.category || 'Otros').trim();
+    if (rawCat) {
+      const key = rawCat.toLowerCase();
+      // Keep the first casing encountered
+      if (!categoryMap.has(key)) {
+        categoryMap.set(key, rawCat);
+      }
+    }
+  });
+  const categories = ['todos', ...Array.from(categoryMap.values())];
 
-  // Categories helper for Restaurants and Retail
-  const categories = ['todos', ...Array.from(new Set(products.map(p => p.category || 'Otros').filter(Boolean)))];
   const filteredProducts = selectedCategory === 'todos' 
     ? products 
-    : products.filter(p => (p.category || 'Otros') === selectedCategory);
+    : products.filter(p => (p.category || 'Otros').trim().toLowerCase() === selectedCategory.trim().toLowerCase());
+
 
   return (
     <div className="store-page">
@@ -230,13 +315,29 @@ export default function Storefront() {
             )}
             <span className="brand-name">{storeInfo.name}</span>
           </motion.div>
-          <motion.button 
-            initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            onClick={() => setIsChatOpen(true)}
-            className="btn-ia-assistant"
-          >
-            <Bot size={18} /> <span>Asistente IA</span>
-          </motion.button>
+          <div className="d-flex align-items-center gap-3">
+            {ui_layout?.has_cart && (
+              <button 
+                onClick={() => setIsCartOpen(true)}
+                className="btn-cart-nav position-relative"
+                aria-label="Ver carrito"
+              >
+                <ShoppingCart size={20} />
+                {cart.length > 0 && (
+                  <span className="cart-badge-count">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </button>
+            )}
+            <motion.button 
+              initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+              onClick={() => setIsChatOpen(true)}
+              className="btn-ia-assistant"
+            >
+              <Bot size={18} /> <span>Asistente IA</span>
+            </motion.button>
+          </div>
         </div>
       </nav>
 
@@ -254,7 +355,7 @@ export default function Storefront() {
         {/* Content Section */}
         <section className="store-content">
           {/* APPOINTMENT FLUID FLOW (Appointments, Health, Services) */}
-          {['appointments', 'health', 'services'].includes(bt) ? (
+          {ui_layout?.has_appointments ? (
             <div className="row g-4 justify-content-center">
               <AnimatePresence mode="wait">
                 {selectedProvider ? (
@@ -282,7 +383,7 @@ export default function Storefront() {
                       <form onSubmit={handleBookAppointment} className="booking-form">
                         <div className="row g-3">
                           <div className="col-12">
-                            <label><Users size={14}/> {bt === 'health' ? 'Nombre Completo del Paciente' : 'Nombre Completo'}</label>
+                            <label><Users size={14}/> {ui_layout?.patient_label || 'Nombre Completo'}</label>
                             <input type="text" placeholder="Ej. Juan Pérez" value={apptForm.client_name} onChange={e => setApptForm({...apptForm, client_name: e.target.value})} required />
                           </div>
                           <div className="col-12">
@@ -366,7 +467,7 @@ export default function Storefront() {
                           </div>
                         </div>
                         <button type="submit" className="btn-confirm-booking mt-4" disabled={!apptForm.time || !apptForm.service_name}>
-                          {bt === 'health' ? 'Confirmar Consulta Médica' : bt === 'services' ? 'Confirmar Visita Técnica' : 'Confirmar Reserva'} <ArrowRight size={18} />
+                          {ui_layout?.button_label || 'Confirmar Reserva'} <ArrowRight size={18} />
                         </button>
                       </form>
                     </div>
@@ -399,7 +500,7 @@ export default function Storefront() {
                             </div>
                             <h5 className="text-white fw-bold mb-1">{prov.name}</h5>
                             <span className="text-accent small fw-bold">
-                              {bt === 'health' ? 'Especialista Médico' : bt === 'services' ? 'Técnico Especialista' : 'Estilista Certificado'}
+                              {ui_layout?.provider_label || 'Profesional'}
                             </span>
                           </motion.div>
                         </div>
@@ -412,7 +513,7 @@ export default function Storefront() {
           ) : null}
 
           {/* 4. DIGITAL RESTAURANT MENU layout */}
-          {bt === 'restaurant' ? (
+          {ui_layout?.is_restaurant ? (
             <div>
               {/* Category selector */}
               <div className="d-flex justify-content-center gap-2 mb-5 flex-wrap">
@@ -454,11 +555,11 @@ export default function Storefront() {
                           <div className="d-flex justify-content-between align-items-center mt-auto pt-3">
                             <div className="price-tag">{fmt(product.price)}</div>
                             <button 
-                              onClick={() => handleBuyWhatsApp(product.name, 'ordenar')}
+                              onClick={() => addToCart(product)}
                               className="btn-buy-wa"
                               disabled={product.stock === 0}
                             >
-                              <ShoppingCart size={16} /> Ordenar
+                              <ShoppingCart size={16} /> Añadir al carrito
                             </button>
                           </div>
                         </div>
@@ -471,7 +572,7 @@ export default function Storefront() {
           ) : null}
 
           {/* 5. GYM PLAN SELECTOR AND SCHEDULE LAYOUT */}
-          {bt === 'gym' ? (
+          {ui_layout?.is_gym ? (
             <div>
               <div className="row g-4 justify-content-center mb-5">
                 {products.length === 0 ? (
@@ -494,12 +595,12 @@ export default function Storefront() {
                           <p className="small text-muted mb-4">{product.description || 'Acceso completo a áreas de fuerza, cardio y clases grupales.'}</p>
                           
                           <button 
-                            onClick={() => handleBuyWhatsApp(product.name, 'inscribir_plan')}
+                            onClick={() => addToCart(product)}
                             className="btn-confirm-booking mt-auto w-100"
                             disabled={product.stock === 0}
                             style={{ background: 'linear-gradient(135deg, var(--accent-color), #7c3aed)' }}
                           >
-                            <Dumbbell size={16}/> Obtener Membresía
+                            <ShoppingCart size={16}/> Añadir Plan
                           </button>
                         </div>
                       </motion.div>
@@ -560,7 +661,7 @@ export default function Storefront() {
           ) : null}
 
           {/* 6. EDUCATION ACADEMY COURSE CATALOG */}
-          {bt === 'education' ? (
+          {ui_layout?.is_education ? (
             <div className="row g-4">
               {products.length === 0 ? (
                 <div className="text-center p-5 text-muted col-12">
@@ -594,11 +695,11 @@ export default function Storefront() {
                             <div className="price-tag fs-4">{fmt(product.price)}</div>
                           </div>
                           <button 
-                            onClick={() => handleBuyWhatsApp(product.name, 'matricular_curso')}
+                            onClick={() => addToCart(product)}
                             className="btn-buy-wa btn-outline-primary"
                             disabled={product.stock === 0}
                           >
-                            Matricularse
+                            <ShoppingCart size={16} className="me-1" /> Añadir Curso
                           </button>
                         </div>
                       </div>
@@ -610,7 +711,7 @@ export default function Storefront() {
           ) : null}
 
           {/* 7. STANDARD RETAIL / COMMERCE CATALOG OR FALLBACK / OTHER */}
-          {['retail', 'other'].includes(bt) ? (
+          {(!ui_layout?.is_restaurant && !ui_layout?.is_gym && !ui_layout?.is_education && !ui_layout?.has_appointments) ? (
             <div>
               {/* Category tabs */}
               {products.length > 0 && categories.length > 2 && (
@@ -654,11 +755,11 @@ export default function Storefront() {
                           <div className="d-flex justify-content-between align-items-center mt-auto pt-3">
                             <div className="price-tag">{fmt(product.price)}</div>
                             <button 
-                              onClick={() => handleBuyWhatsApp(product.name)}
+                              onClick={() => addToCart(product)}
                               className="btn-buy-wa"
                               disabled={product.stock === 0}
                             >
-                              <ShoppingCart size={16} /> Comprar
+                              <ShoppingCart size={16} /> Añadir al carrito
                             </button>
                           </div>
                         </div>
@@ -802,27 +903,188 @@ export default function Storefront() {
                     </div>
                     <button
                       onClick={() => {
-                        let actionType = 'comprar';
-                        if (bt === 'restaurant') actionType = 'ordenar';
-                        else if (bt === 'gym') actionType = 'inscribir_plan';
-                        else if (bt === 'education') actionType = 'matricular_curso';
-                        handleBuyWhatsApp(selectedProduct.name, actionType);
+                        addToCart(selectedProduct);
+                        setSelectedProduct(null);
                       }}
                       className="btn-buy-wa fs-6 px-4 py-3"
                       disabled={selectedProduct.stock === 0}
                     >
                       <ShoppingCart size={18} className="me-2" />{' '}
-                      {bt === 'restaurant'
-                        ? 'Ordenar Ahora'
-                        : bt === 'education'
-                        ? 'Matricularse'
-                        : 'Comprar Ahora'}
+                      Añadir al carrito
                     </button>
                   </div>
                 </div>
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Cart Trigger */}
+      {!isCartOpen && !isChatOpen && cart.length > 0 && !['appointments', 'health', 'services'].includes(bt) && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsCartOpen(true)}
+          className="floating-cart-trigger"
+          aria-label="Abrir carrito"
+        >
+          <ShoppingCart size={28} />
+          <span className="floating-cart-badge">
+            {cart.reduce((sum, item) => sum + item.quantity, 0)}
+          </span>
+        </motion.button>
+      )}
+
+      {/* Shopping Cart Drawer */}
+      <AnimatePresence>
+        {isCartOpen && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              className="cart-overlay"
+              onClick={() => setIsCartOpen(false)}
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="cart-drawer glass-panel"
+            >
+              <div className="cart-header">
+                <h4 className="text-white fw-bold m-0 d-flex align-items-center gap-2">
+                  <ShoppingCart size={22} className="text-accent" /> Mi Carrito
+                </h4>
+                <button onClick={() => setIsCartOpen(false)} className="cart-close-btn-round" aria-label="Cerrar carrito">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="cart-body">
+                {cart.length === 0 ? (
+                  <div className="empty-cart-view">
+                    <ShoppingCart size={64} className="text-muted mb-3" />
+                    <p className="text-muted">Tu carrito está vacío</p>
+                    <button onClick={() => setIsCartOpen(false)} className="btn-continue-shopping mt-2">
+                      Ver catálogo
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="cart-items-list">
+                      {cart.map((item) => (
+                        <div key={item.product.id} className="cart-item">
+                          <div className="cart-item-img-container">
+                            {item.product.image_url ? (
+                              <img src={getImageUrl(item.product.image_url)} alt={item.product.name} />
+                            ) : (
+                              <div className="cart-item-placeholder">
+                                <PackageSearch size={20} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="cart-item-details">
+                            <h6 className="cart-item-name">{item.product.name}</h6>
+                            <span className="cart-item-price">{fmt(item.product.price)}</span>
+                            <div className="cart-item-qty-row">
+                              <div className="qty-controls">
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(item.product.id, -1)}
+                                  className="qty-btn"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="qty-val">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(item.product.id, 1)}
+                                  className="qty-btn"
+                                  disabled={item.quantity >= item.product.stock}
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeFromCart(item.product.id)}
+                                className="cart-remove-btn"
+                                title="Eliminar producto"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="cart-checkout-section mt-4">
+                      <div className="cart-total-row d-flex justify-content-between text-white fw-bold mb-3 fs-5">
+                        <span>Total:</span>
+                        <span className="text-accent">{fmt(cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0))}</span>
+                      </div>
+
+                      <form onSubmit={handleCheckout} className="cart-checkout-form">
+                        <h6 className="text-white border-bottom border-secondary pb-2 mb-3">Datos de Entrega</h6>
+                        <div className="mb-2">
+                          <label className="form-label text-muted small mb-1">Nombre Completo *</label>
+                          <input
+                            type="text"
+                            className="form-control bg-dark border-secondary text-white text-sm"
+                            placeholder="Ej. Juan Pérez"
+                            value={checkoutForm.name}
+                            onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="form-label text-muted small mb-1">Teléfono *</label>
+                          <input
+                            type="tel"
+                            className="form-control bg-dark border-secondary text-white text-sm"
+                            placeholder="Ej. 3001234567"
+                            value={checkoutForm.phone}
+                            onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="form-label text-muted small mb-1">Dirección de Entrega</label>
+                          <input
+                            type="text"
+                            className="form-control bg-dark border-secondary text-white text-sm"
+                            placeholder="Ej. Calle 10 #20-30"
+                            value={checkoutForm.address}
+                            onChange={(e) => setCheckoutForm({ ...checkoutForm, address: e.target.value })}
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label text-muted small mb-1">Notas u Observaciones</label>
+                          <textarea
+                            className="form-control bg-dark border-secondary text-white text-sm"
+                            placeholder="Ej. Dejar en recepción, sin condimentos, etc."
+                            rows={2}
+                            value={checkoutForm.notes}
+                            onChange={(e) => setCheckoutForm({ ...checkoutForm, notes: e.target.value })}
+                          />
+                        </div>
+
+                        <button type="submit" className="btn-confirm-booking w-100">
+                          <MessageCircle size={18} /> Enviar Pedido por WhatsApp
+                        </button>
+                      </form>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

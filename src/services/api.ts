@@ -40,32 +40,48 @@ async function refreshAccessToken(): Promise<string | null> {
 
 // ── apiFetch ──────────────────────────────────────────────────────────────
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  const token = getAccessToken();
+  try {
+    const token = getAccessToken();
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  });
-
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (!newToken) return res;
-
-    return fetch(`${API_URL}${endpoint}`, {
+    const res = await fetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${newToken}`,
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
     });
-  }
 
-  return res;
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (!newToken) throw new Error("No autenticado");
+
+      const retryRes = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+          ...options.headers,
+        },
+      });
+      
+      if (!retryRes.ok) {
+        const errorData = await retryRes.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Error de conexión con el servidor");
+      }
+      return retryRes;
+    }
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Error de conexión con el servidor");
+    }
+
+    return res;
+  } catch (error) {
+    console.error("API Request Error:", error);
+    throw error;
+  }
 };
 
 // ── Logout ────────────────────────────────────────────────────────────────

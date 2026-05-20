@@ -18,11 +18,14 @@ import Storefront from './pages/Storefront';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 
+import { ToastProvider } from './context/ToastContext';
+
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Router>
+      <ToastProvider>
+        <AuthProvider>
+          <Router>
           <Routes>
 
             {/* 🌐 TIENDA PÚBLICA */}
@@ -69,6 +72,7 @@ function App() {
           </Routes>
         </Router>
       </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

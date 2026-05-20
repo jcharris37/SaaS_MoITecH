@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
+import { useToast } from '../context/ToastContext';
 import { apiFetch, API_URL } from '../services/api';
 import type { User } from '../context/AuthContext';
 import {
@@ -93,6 +94,7 @@ const DashboardHeader: React.FC<{
   onNewInvoice: () => void;
   onAppointments?: () => void;
 }> = ({ title, icon, subtitle, user, onNewInvoice, onAppointments }) => {
+  const { showToast } = useToast();
   const copyLink = () => {
     const url = `${window.location.origin}/tienda/${user.slug}`;
     if (navigator.clipboard) {
@@ -102,7 +104,7 @@ const DashboardHeader: React.FC<{
       el.value = url; document.body.appendChild(el); el.select();
       document.execCommand('copy'); document.body.removeChild(el);
     }
-    alert('¡Enlace del portal público copiado!');
+    showToast('¡Enlace del portal público copiado!', 'success');
   };
 
   return (
@@ -131,6 +133,7 @@ const BrandingSettings: React.FC<{
   setSavingTheme: (s: boolean) => void;
 }> = ({ user, onRefresh, logoUploading, setLogoUploading, savingTheme, setSavingTheme }) => {
   const { refreshUser } = useAuth();
+  const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,7 +159,7 @@ const BrandingSettings: React.FC<{
       await refreshUser();
       onRefresh();
     } catch {
-      alert('Error al subir el logo');
+      showToast('Error al subir el logo', 'error');
     } finally {
       setLogoUploading(false);
       if (fileRef.current) fileRef.current.value = '';

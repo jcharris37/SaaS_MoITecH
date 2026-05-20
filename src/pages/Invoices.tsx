@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/useAuth';
+import { useToast } from '../context/ToastContext';
 import {
   Plus, Trash2, FileText, CheckCircle, Clock, XCircle,
   Printer, Search, Receipt
@@ -62,6 +63,7 @@ const Invoices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
 
   // Form state
   const [form, setForm] = useState({ client_name: '', client_phone: '', client_email: '', notes: '' });
@@ -136,8 +138,8 @@ const Invoices: React.FC = () => {
   };
 
   const createInvoice = async () => {
-    if (!form.client_name.trim()) { alert('Ingresa el nombre del cliente'); return; }
-    if (items.every(i => !i.description.trim())) { alert('Agrega al menos un item'); return; }
+    if (!form.client_name.trim()) { showToast('Ingresa el nombre del cliente', 'warning'); return; }
+    if (items.every(i => !i.description.trim())) { showToast('Agrega al menos un item', 'warning'); return; }
     setSaving(true);
     try {
       const r = await apiFetch('/api/invoices', {
@@ -159,7 +161,7 @@ const Invoices: React.FC = () => {
       resetForm();
     } catch (e: unknown) {
       const error = e as Error;
-      alert(error.message);
+      showToast(error.message, 'error');
     } finally { setSaving(false); }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PackageSearch, Plus, X, Camera, Pencil, Check } from 'lucide-react';
 import { apiFetch, API_URL } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface Product {
   id?: number;
@@ -11,6 +12,90 @@ interface Product {
   image_url?: string;
   description?: string;
 }
+
+// Selector de categoría: muestra las existentes + opción para crear una nueva
+interface CategorySelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  existingCategories: string[];
+  inputClassName?: string;
+  selectClassName?: string;
+  size?: 'sm' | 'normal';
+}
+
+const CategorySelect: React.FC<CategorySelectProps> = ({
+  value,
+  onChange,
+  existingCategories,
+  inputClassName = '',
+  selectClassName = '',
+  size = 'normal',
+}) => {
+  const isNew = value !== '' && !existingCategories.includes(value) && value !== '__new__';
+  const [showNew, setShowNew] = useState(isNew);
+  const [newCat, setNewCat] = useState(isNew ? value : '');
+
+  const selectVal = showNew ? '__new__' : (existingCategories.includes(value) ? value : (existingCategories[0] || 'General'));
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e.target.value === '__new__') {
+      setShowNew(true);
+      setNewCat('');
+      onChange('');
+    } else {
+      setShowNew(false);
+      onChange(e.target.value);
+    }
+  };
+
+  const handleNewInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewCat(e.target.value);
+    onChange(e.target.value);
+  };
+
+  const sizeClass = size === 'sm' ? 'form-select-sm form-control-sm' : '';
+
+  return (
+    <div className="d-flex flex-column gap-1">
+      <select
+        className={`form-select ${sizeClass} ${selectClassName}`}
+        value={selectVal}
+        onChange={handleSelect}
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          color: '#fff',
+          borderRadius: size === 'sm' ? '8px' : '10px',
+        }}
+      >
+        {existingCategories.map(cat => (
+          <option key={cat} value={cat} style={{ background: '#1a1a2e', color: '#fff' }}>{cat}</option>
+        ))}
+        <option value="__new__" style={{ background: '#1a1a2e', color: 'var(--accent-color)' }}>
+          ＋ Nueva categoría...
+        </option>
+      </select>
+      {showNew && (
+        <input
+          type="text"
+          className={`${inputClassName}`}
+          value={newCat}
+          onChange={handleNewInput}
+          placeholder="Escribe el nombre de la nueva categoría"
+          autoFocus
+          style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--accent-color)',
+            color: '#fff',
+            borderRadius: size === 'sm' ? '8px' : '10px',
+            padding: size === 'sm' ? '0.3rem 0.6rem' : '0.5rem 0.75rem',
+            outline: 'none',
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +114,22 @@ const Products: React.FC = () => {
     name: '', price: '', stock: '', category: '', description: ''
   });
   const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
+
+  // Derive unique sorted categories from existing products
+  const existingCategories = Array.from(
+    new Map(
+      products
+        .map(p => (p.category || 'General').trim())
+        .filter(Boolean)
+        .map(c => [c.toLowerCase(), c])
+    ).values()
+  ).sort();
+
+  // Ensure 'General' is always available
+  const categoryOptions = existingCategories.length > 0
+    ? (existingCategories.includes('General') ? existingCategories : ['General', ...existingCategories])
+    : ['General'];
 
   const getImageUrl = (path?: string) => {
     if (!path) return '';
@@ -41,8 +142,8 @@ const Products: React.FC = () => {
       const response = await apiFetch(`/api/products`);
       const data = await response.json();
       setProducts(data);
-    } catch {
-      console.error("Error cargando productos:");
+    } catch (err: any) {
+      showToast(err.message || "Error al cargar productos", "error");
     } finally {
       setLoading(false);
     }
@@ -68,7 +169,7 @@ const Products: React.FC = () => {
       const data = await r.json();
       setImageUrl(data.url);
     } catch {
-      alert('Error subiendo foto de producto');
+      showToast('Error subiendo foto de producto', 'error');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -79,26 +180,25 @@ const Products: React.FC = () => {
     e.preventDefault();
     if (!formData.name || !formData.price) return;
     try {
-      const response = await apiFetch(`/api/products`, {
+      await apiFetch(`/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           price: parseFloat(formData.price),
           stock: parseInt(formData.stock) || 0,
-          category: formData.category || 'General',
+          category: (formData.category || 'General').trim(),
           description: formData.description,
           image_url: imageUrl
         })
       });
-      if (response.ok) {
-        setFormData({ name: '', price: '', stock: '', category: 'General', description: '' });
-        setImageUrl('');
-        setShowForm(false);
-        fetchProducts();
-      }
-    } catch {
-      alert("Error al guardar el producto");
+      setFormData({ name: '', price: '', stock: '', category: 'General', description: '' });
+      setImageUrl('');
+      setShowForm(false);
+      showToast('Producto guardado exitosamente', 'success');
+      fetchProducts();
+    } catch (err: any) {
+      showToast(err.message || 'Error al guardar el producto', 'error');
     }
   };
 
@@ -106,9 +206,10 @@ const Products: React.FC = () => {
     if (!window.confirm('¿Eliminar este producto?')) return;
     try {
       await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
+      showToast('Producto eliminado', 'success');
       fetchProducts();
-    } catch {
-      console.error("Error eliminando");
+    } catch (err: any) {
+      showToast(err.message || "Error al eliminar producto", "error");
     }
   };
 
@@ -131,26 +232,23 @@ const Products: React.FC = () => {
     if (!editData.name || !editData.price) return;
     setSaving(true);
     try {
-      const response = await apiFetch(`/api/products/${product.id}`, {
+      await apiFetch(`/api/products/${product.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editData.name,
           price: parseFloat(editData.price),
           stock: parseInt(editData.stock) || 0,
-          category: editData.category || 'General',
+          category: (editData.category || 'General').trim(),
           description: editData.description,
           image_url: product.image_url
         })
       });
-      if (response.ok) {
-        setEditingId(null);
-        fetchProducts();
-      } else {
-        alert('Error al actualizar el producto');
-      }
-    } catch {
-      alert('Error al actualizar el producto');
+      setEditingId(null);
+      showToast('Producto actualizado exitosamente', 'success');
+      fetchProducts();
+    } catch (err: any) {
+      showToast(err.message || 'Error al actualizar el producto', 'error');
     } finally {
       setSaving(false);
     }
@@ -197,9 +295,12 @@ const Products: React.FC = () => {
             </div>
             <div className="col-md-6">
               <label className="form-label text-muted">Categoría</label>
-              <input type="text" className="form-control bg-transparent text-white border-secondary"
-                value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}
-                placeholder="Ej. Ropa, Electrónica, Accesorios" />
+              <CategorySelect
+                value={formData.category}
+                onChange={(val) => setFormData({...formData, category: val})}
+                existingCategories={categoryOptions}
+                inputClassName="form-control bg-transparent text-white"
+              />
             </div>
             <div className="col-md-6">
               <label className="form-label text-muted">Descripción</label>
@@ -276,8 +377,16 @@ const Products: React.FC = () => {
                             value={editData.stock} onChange={e => setEditData({...editData, stock: e.target.value})} />
                         </div>
                       </div>
-                      <input className="form-control form-control-sm bg-transparent text-white border-secondary"
-                        value={editData.category} onChange={e => setEditData({...editData, category: e.target.value})} placeholder="Categoría" />
+                      <div>
+                        <label className="text-muted" style={{fontSize:'0.72rem'}}>Categoría</label>
+                        <CategorySelect
+                          value={editData.category}
+                          onChange={val => setEditData({...editData, category: val})}
+                          existingCategories={categoryOptions}
+                          inputClassName="form-control form-control-sm bg-transparent text-white mt-1"
+                          size="sm"
+                        />
+                      </div>
                       <input className="form-control form-control-sm bg-transparent text-muted border-secondary"
                         value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} placeholder="Descripción" />
                       <div className="d-flex gap-2 mt-1">
