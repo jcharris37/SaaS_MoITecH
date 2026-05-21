@@ -119,9 +119,7 @@ def require_admin(user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="No autorizado")
     return user
 
-# ==========================================
-# 🔑 AUTH
-# ==========================================
+# Endpoints de autenticación (Login, Restablecimiento de contraseña y perfil del usuario actual)
 @app.post("/api/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
 def login(req: schemas.LoginRequest, request: Request, db: Session = Depends(get_db)):
@@ -231,9 +229,7 @@ def read_users_me(user=Depends(get_current_user), db: Session = Depends(get_db))
         "business_type": tenant.business_type
     }
 
-# ==========================================
-# 🏪 REGISTER
-# ==========================================
+# Registro de nuevos negocios (tenants) y configuración inicial del bot
 def generate_slug(name: str) -> str:
     slug = name.lower()
     slug = re.sub(r'[^a-z0-9\s-]', '', slug)
@@ -302,16 +298,12 @@ def register_tenant(tenant: schemas.TenantCreate, request: Request, db: Session 
 
     return {"message": "Negocio registrado exitosamente", "slug": slug}
 
-# ==========================================
-# 👑 ADMIN
-# ==========================================
+# Endpoints de administración global (Superadmin) para la gestión de negocios
 @app.get("/api/tenants", response_model=List[schemas.TenantOut])
 def get_all_tenants(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return db.query(models.Tenant).all()
 
-# ==========================================
-# 🗑️ DELETE TENANT (ADMIN)
-# ==========================================
+# Eliminación de negocios y sus tokens asociados (Uso exclusivo de Superadmin)
 @app.delete("/api/tenants/{tenant_id}")
 def delete_tenant(
     tenant_id: int,
@@ -329,9 +321,7 @@ def delete_tenant(
     return {"status": "ok"}
 
 
-# ==========================================
-# 🌍 PUBLIC STORE
-# ==========================================
+# Endpoints públicos para la tienda (Información, catálogo, pedidos por WhatsApp y bot interactivo)
 @app.get("/api/store/{slug}/info")
 def get_store_info(slug: str, db: Session = Depends(get_db)):
     tenant = db.query(models.Tenant).filter(models.Tenant.slug == slug).first()
@@ -507,9 +497,7 @@ def store_chat(slug: str, req: schemas.ChatRequest, request: Request, db: Sessio
         
     return {"reply": rule.response_text, "action": "text"}
 
-# ==========================================
-# 🔐 PRIVATE (MULTI-TENANT SEGURO)
-# ==========================================
+# Endpoints privados protegidos con multi-tenancy (Configuración, citas, proveedores, productos, clientes y estadísticas)
 
 # CONFIGURACIÓN
 @app.put("/api/settings")
@@ -809,9 +797,7 @@ def get_stats(user=Depends(get_current_user), db: Session = Depends(get_db)):
         completed_appointments_today=completed_appts
     )
 
-# ==========================================
-# 🔄 REFRESH & LOGOUT
-# ==========================================
+# Gestión de sesión (Refrescar tokens de acceso y cierre de sesión seguro)
 @app.post("/api/refresh", response_model=schemas.Token)
 def refresh_token(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
     try:
@@ -864,9 +850,7 @@ def logout(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
         db.commit()
     return {"message": "Sesión cerrada correctamente"}
 
-# ==========================================
-# 🧾 INVOICES
-# ==========================================
+# Gestión de facturas (Listar, crear, actualizar estado y eliminar facturas del negocio)
 @app.get("/api/invoices", response_model=List[schemas.InvoiceOut])
 def get_invoices(user=Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = get_tenant_id(user)
